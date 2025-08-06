@@ -422,8 +422,8 @@ def create_structured_analysis(assessment_id: str, score: float, skills: List[st
     """Create structured analysis with improved video recommendations"""
     # Determine weak skills based on score
     weak_skills = []
-    if score < 80:
-        weak_skills = skills  # All skills need improvement if score is low
+    if score < 40:  # Changed from 80 to 40 to only mark skills below 40% as weak
+        weak_skills = skills  # Skills need improvement if score is low
     
     # Generate recommendations using curated video system
     recommendations = []
@@ -435,7 +435,9 @@ def create_structured_analysis(assessment_id: str, score: float, skills: List[st
     if score >= 80:
         improvement_plan = "Excellent performance! Keep practicing to maintain your high level of expertise."
     elif score >= 60:
-        improvement_plan = f"Good foundation! Focus on practicing {', '.join(weak_skills)} through hands-on projects and the recommended videos."
+        improvement_plan = "Good foundation! Continue practicing to strengthen your skills further."
+    elif score >= 40:
+        improvement_plan = "Average performance. Consider additional practice to improve your skills."
     else:
         improvement_plan = f"Need improvement in {', '.join(weak_skills)}. Start with the recommended beginner videos and practice regularly."
     

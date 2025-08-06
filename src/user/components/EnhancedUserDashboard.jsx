@@ -359,7 +359,7 @@ export default function EnhancedUserDashboard() {
             {activeTab === "profile" && (
               <div>
                 <h3 className="text-xl font-bold text-gray-800 mb-6">👤 Profile & Resume Analysis</h3>
-                <ResumeUploader onResumeUpload={handleResumeUpload} />
+                <ResumeUploader user={user} onResumeUpload={handleResumeUpload} />
                 
                 {userProfile && (
                   <div className="mt-8 bg-white border rounded-lg p-6">
@@ -547,7 +547,7 @@ export default function EnhancedUserDashboard() {
             {activeTab === "leaderboard" && (
               <div>
                 <h3 className="text-xl font-bold text-gray-800 mb-6">🏅 Leaderboard & Achievements</h3>
-                <Leaderboard user={user} />
+                <Leaderboard />
               </div>
             )}
           </div>

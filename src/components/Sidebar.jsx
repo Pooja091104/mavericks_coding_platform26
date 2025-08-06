@@ -9,8 +9,7 @@ import {
   Video, 
   FileText,
   Settings,
-  HelpCircle,
-  MessageSquare
+  HelpCircle
 } from 'lucide-react';
 
 export default function Sidebar({ activeTab, setActiveTab }) {
@@ -23,7 +22,6 @@ export default function Sidebar({ activeTab, setActiveTab }) {
     { id: 'analytics', label: 'Analytics', icon: BarChart3 },
     { id: 'videos', label: 'Video Learning', icon: Video },
     { id: 'resume', label: 'Resume Builder', icon: FileText },
-    { id: 'chatbot', label: 'AI Assistant', icon: MessageSquare },
   ];
 
   return (
@@ -72,4 +70,4 @@ export default function Sidebar({ activeTab, setActiveTab }) {
       </div>
     </aside>
   );
-}
+} 

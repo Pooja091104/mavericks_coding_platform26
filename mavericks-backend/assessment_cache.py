@@ -303,16 +303,14 @@ def get_video_recommendations(skill: str, score: float) -> List[Dict]:
         videos = VIDEO_RECOMMENDATIONS[mapped_skill]
         
         # If score is low, recommend more videos
-        if score < 60:
+        if score < 40:  # Changed from 60 to 40 to recommend videos for scores below 40%
             return videos
-        elif score < 80:
-            return videos[:1]  # Just one video for moderate scores
         else:
-            return []  # No videos needed for high scores
+            return []  # No videos needed for higher scores
     
     # Fallback for unknown skills
     return [{
         "video_title": f"Learn {skill} - Complete Tutorial",
         "video_url": f"https://www.youtube.com/results?search_query={skill}+tutorial+beginner",
         "description": f"Comprehensive tutorial to improve your {skill} skills"
-    }] 
+    }]

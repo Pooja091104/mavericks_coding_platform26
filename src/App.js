@@ -1,6 +1,6 @@
 import { useState, useEffect } from "react";
 import { onAuthStateChange } from "./firebaseConfig";
-import AuthContainer from "./pages/AuthContainer";
+import AuthPage from './pages/AuthPage';
 import UserDashboard from "./user/components/UserDashboard";
 import AdminDashboard from "./pages/AdminDashboard";
 import LoadingSpinner from "./components/LoadingSpinner";
@@ -45,7 +45,7 @@ export default function App() {
   }
 
   if (!user) {
-    return <AuthContainer onLogin={handleLogin} />;
+    return <AuthPage onLogin={handleLogin} />;
   }
 
   // Render admin or user dashboard based on role

@@ -3,6 +3,8 @@ import SkillChart from "./SkillChart";
 import SkillAssessment from "./SkillAssessment";
 import VideoRecorder from "./VideoRecorder";
 import ProgressStepper from "./ProgressStepper";
+import VideoRecommendations from "./VideoRecommendations";
+import SkillProgressTracker from "./SkillProgressTracker";
 import { uploadResume, updateUserProfile } from "../../firebaseConfig";
 
 export default function ResumeUploader({ user }) {
@@ -10,41 +12,39 @@ export default function ResumeUploader({ user }) {
   const [profiles, setProfiles] = useState([]);
   const [loading, setLoading] = useState(false);
   const [error, setError] = useState("");
-  const [showAssessment, setShowAssessment] = useState(false);
-  const [selectedSkill, setSelectedSkill] = useState("");
-  const [assessmentResults, setAssessmentResults] = useState({});
-  const [generatingAssessment, setGeneratingAssessment] = useState(false);
-  const [generatingSkill, setGeneratingSkill] = useState(null);
-  const [showVideoRecorder, setShowVideoRecorder] = useState(false);
-  const [recordedVideos, setRecordedVideos] = useState([]);
-  const [currentStep, setCurrentStep] = useState(0);
+  const [notification, setNotification] = useState(null);
   const [resumeUploaded, setResumeUploaded] = useState(false);
   const [skillsExtracted, setSkillsExtracted] = useState(false);
-  const [assessmentCompleted, setAssessmentCompleted] = useState(false);
-  const [learningPathGenerated, setLearningPathGenerated] = useState(false);
-  const [notification, setNotification] = useState(null);
-  
-  // Progress steps for the stepper component
+  const [currentAssessment, setCurrentAssessment] = useState(null);
+  const [showAssessment, setShowAssessment] = useState(false);
+  const [assessmentResults, setAssessmentResults] = useState([]);
+  const [weakSkills, setWeakSkills] = useState([]);
+  const [completedVideos, setCompletedVideos] = useState([]);
+  const [activeTab, setActiveTab] = useState("resume"); // resume, assessment, videos, progress
+
   const progressSteps = [
     { label: "Resume Upload", completed: resumeUploaded },
     { label: "Skills Extraction", completed: skillsExtracted },
-    { label: "Assessment", completed: assessmentCompleted },
-    { label: "Learning Path", completed: learningPathGenerated }
+    { label: "Skill Assessment", completed: assessmentResults.length > 0 },
+    { label: "Video Learning", completed: completedVideos.length > 0 }
   ];
   
-  // Update user profile when skills are extracted
+  // Load saved data from localStorage on component mount
   useEffect(() => {
-    if (profiles.length > 0 && profiles[0].skills.length > 0 && user?.uid) {
-      updateUserProfile(user.uid, {
-        skills: profiles[0].skills,
-        resumeUploaded: true
-      });
+    const savedAssessments = localStorage.getItem("assessmentResults");
+    if (savedAssessments) {
+      setAssessmentResults(JSON.parse(savedAssessments));
     }
-  }, [profiles, user]);
+    
+    const savedVideos = localStorage.getItem("completedVideos");
+    if (savedVideos) {
+      setCompletedVideos(JSON.parse(savedVideos));
+    }
+  }, []);
 
   const handleFileChange = (e) => {
     setFiles([...e.target.files]);
-    setError(""); // Clear previous errors
+    setError("");
   };
 
   const handleUpload = async () => {
@@ -52,614 +52,367 @@ export default function ResumeUploader({ user }) {
       setError("Please select files first!");
       return;
     }
-    
     setLoading(true);
-    setError("");
     setResumeUploaded(true);
-    setCurrentStep(1);
-    
-    // Show notification
-    setNotification({
-      message: 'Uploading resume and extracting skills...',
-      type: 'success'
-    });
 
     try {
       const uploadedProfiles = [];
 
       for (const file of files) {
-        // Upload to Firebase Storage if user is logged in
         if (user?.uid) {
-          try {
-            await uploadResume(file, user.uid);
-            console.log('✅ Resume uploaded to Firebase Storage');
-          } catch (uploadErr) {
-            console.error('⚠️ Firebase upload error:', uploadErr);
-            // Continue with skill extraction even if Firebase upload fails
-          }
+          await uploadResume(file, user.uid);
         }
 
         const formData = new FormData();
         formData.append("file", file);
 
-        // === Change BASE_URL if running backend on different port ===
-        const BASE_URL = "http://127.0.0.1:8002/analyze_resume";
-
-        const res = await fetch(BASE_URL, {
+        const res = await fetch("http://127.0.0.1:8002/analyze_resume", {
           method: "POST",
           body: formData,
         });
 
-        if (!res.ok) {
-          throw new Error(`HTTP error! status: ${res.status}`);
-        }
-
         const data = await res.json();
-        console.log("Backend Response:", data);
 
-        if (data.error) {
-          throw new Error(data.error);
-        }
-
-        // Handle the improved backend response
         let skills = [];
-        if (data.skills && Array.isArray(data.skills)) {
-          // Backend returns proper array - use it directly
-          skills = data.skills.filter(skill => skill && skill.trim().length > 0);
-          console.log('✅ Received skills array from backend:', skills);
-        } else if (data.skills) {
-          console.log('⚠️ Received non-array skills:', data.skills, typeof data.skills);
-          // Fallback for string format
-          try {
-            skills = JSON.parse(data.skills);
-            console.log('✅ Parsed JSON skills:', skills);
-          } catch (err) {
-            console.log('⚠️ JSON parse failed, using string split');
-            // Only use string splitting as last resort
-            if (typeof data.skills === 'string') {
-              skills = data.skills
-                .replace(/[\[\]"']/g, "")
-                .split(/,|\n/)
-                .map((s) => s.trim())
-                .filter((s) => s.length > 0);
-              console.log('📝 Split skills:', skills);
-            }
-          }
-        } else {
-          console.log('❌ No skills data received');
+        if (Array.isArray(data.skills)) {
+          skills = data.skills;
         }
 
         uploadedProfiles.push({
           filename: data.filename || file.name,
           skills,
-          textLength: data.text_length || 0,
-          skillsCount: data.skills_count || skills.length,
-          processingTime: Date.now(),
-          resumeUrl: file.name // Store filename as URL reference
         });
       }
 
       setProfiles(uploadedProfiles);
       setSkillsExtracted(true);
-      setCurrentStep(2);
-      
-      // Update notification
-      setNotification({
-        message: `Successfully extracted ${uploadedProfiles[0]?.skills.length || 0} skills from your resume`,
-        type: 'success'
-      });
-      
-      // Auto-hide notification after 5 seconds
-      setTimeout(() => {
-        setNotification(null);
-      }, 5000);
-      
+
+      if (uploadedProfiles.length > 0 && user?.uid) {
+        const allSkills = uploadedProfiles.flatMap(profile => profile.skills);
+        const uniqueSkills = [...new Set(allSkills)];
+
+        updateUserProfile(user.uid, {
+          skills: uniqueSkills,
+          resumeUploaded: true,
+          skillsExtracted: true
+        });
+      }
     } catch (err) {
-      console.error("Error:", err);
-      setError(err.message);
-      
-      // Show error notification
-      setNotification({
-        message: `Error: ${err.message}`,
-        type: 'error'
-      });
+      setError("Upload failed, check console");
+      console.error("Error uploading resume:", err);
     } finally {
       setLoading(false);
     }
   };
 
-  const clearResults = () => {
-    setProfiles([]);
-    setFiles([]);
-    setError("");
-    setResumeUploaded(false);
-    setSkillsExtracted(false);
-    setAssessmentCompleted(false);
-    setLearningPathGenerated(false);
-    setCurrentStep(0);
-    setAssessmentResults({});
-  };
-  
-  // Function to generate skill scores
-  const generateSkillScores = async (profileIndex) => {
-    const profile = profiles[profileIndex];
-    if (!profile || !profile.skills || profile.skills.length === 0) {
-      setError("No skills found to generate scores");
-      return;
+  // Save assessment results to localStorage when they change
+  useEffect(() => {
+    if (assessmentResults.length > 0) {
+      localStorage.setItem("assessmentResults", JSON.stringify(assessmentResults));
     }
-    
-    // Create a simple scoring algorithm (this would be replaced with AI-based scoring)
-    const skillScores = profile.skills.map(skill => ({
-      name: skill,
-      score: Math.floor(Math.random() * 100) // Random score for demo
-    }));
-    
-    // Update the profile with scores
-    const updatedProfiles = [...profiles];
-    updatedProfiles[profileIndex] = {
-      ...profile,
-      skillScores
+  }, [assessmentResults]);
+
+  // Save completed videos to localStorage when they change
+  useEffect(() => {
+    if (completedVideos.length > 0) {
+      localStorage.setItem("completedVideos", JSON.stringify(completedVideos));
+    }
+  }, [completedVideos]);
+
+  const handleAssessmentComplete = (result) => {
+    const newResult = {
+      ...result,
+      timestamp: new Date().toISOString(),
+      id: Date.now()
     };
-    
-    setProfiles(updatedProfiles);
-  };
-  
-  // Function to generate individual skill assessment
-  const generateIndividualSkillAssessment = (skill) => {
-    if (!skill) return;
-    
-    setGeneratingSkill(skill);
-    
-    // Simulate API call to generate assessment
-    setTimeout(() => {
-      setSelectedSkill(skill);
-      setShowAssessment(true);
-      setGeneratingSkill(null);
-    }, 1500);
-  };
-  
-  // Function to handle assessment completion
-  const handleAssessmentComplete = (skill, score, results) => {
-    // Update assessment results
-    setAssessmentResults(prev => ({
-      ...prev,
-      [skill]: { score, results }
-    }));
-    
-    // Close assessment modal
-    closeAssessment();
-    
-    // Set assessment completed flag
-    setAssessmentCompleted(true);
-    setCurrentStep(3);
-    
-    // Show notification
-    setNotification({
-      message: `Assessment completed for ${skill} with score ${score}%`,
-      type: 'success'
+
+    setAssessmentResults(prev => {
+      // Replace existing result for same skill or add new one
+      const filtered = prev.filter(r => r.skill !== result.skill);
+      return [...filtered, newResult];
     });
-    
-    // Auto-hide notification after 5 seconds
-    setTimeout(() => {
-      setNotification(null);
-    }, 5000);
-  };
-  
-  // Function to close assessment modal
-  const closeAssessment = () => {
-    setShowAssessment(false);
-    setSelectedSkill("");
-  };
-  
-  // Function to generate assessments for all skills
-  const generateAssessmentForAllSkills = () => {
-    if (profiles.length === 0 || profiles[0].skills.length === 0) {
-      setError("No skills found to generate assessments");
-      return;
-    }
-    
-    setGeneratingAssessment(true);
-    
-    // Get all skills from the first profile
-    const skills = profiles[0].skills;
-    
-    // Simulate API calls to generate assessments for all skills
-    const results = {};
-    
-    // Process each skill with a delay
-    const processSkill = (index) => {
-      if (index >= skills.length) {
-        // All skills processed
-        setAssessmentResults(results);
-        setGeneratingAssessment(false);
-        setAssessmentCompleted(true);
-        setCurrentStep(3);
-        
-        // Show notification
-        setNotification({
-          message: `Generated assessments for all ${skills.length} skills`,
-          type: 'success'
-        });
-        
-        return;
-      }
-      
-      const skill = skills[index];
-      
-      // Generate random score and results for demo
-      const score = Math.floor(Math.random() * 100);
-      const weakSkills = score < 70 ? [
-        "Knowledge gaps in " + skill,
-        "Practical application of " + skill,
-        "Advanced concepts in " + skill
-      ].slice(0, Math.floor(Math.random() * 3) + 1) : [];
-      
-      results[skill] = {
-        score,
-        results: {
-          weak_skills: weakSkills,
-          recommendations: [
-            "Practice more with " + skill,
-            "Take advanced courses in " + skill,
-            "Build projects using " + skill
-          ]
+
+    // Extract weak skills for video recommendations
+    if (result.score < 40) {
+      // If score is below 40%, add the skill to weak skills list
+      setWeakSkills(prev => {
+        const newWeakSkills = [...prev];
+        if (!newWeakSkills.includes(result.skill)) {
+          newWeakSkills.push(result.skill);
         }
-      };
-      
-      // Process next skill after delay
-      setTimeout(() => processSkill(index + 1), 500);
-    };
-    
-    // Start processing skills
-    processSkill(0);
+        return newWeakSkills;
+      });
+    }
+
+    setShowAssessment(false);
+    setCurrentAssessment(null);
+    setActiveTab("videos"); // Automatically switch to videos tab after assessment
+  };
+
+  const handleStartAssessment = (skill) => {
+    setCurrentAssessment(skill);
+    setShowAssessment(true);
+  };
+
+  const handleRetakeAssessment = (skill) => {
+    handleStartAssessment(skill);
+  };
+
+  const handleVideoComplete = (video) => {
+    setCompletedVideos(prev => {
+      const exists = prev.find(v => v.id === video.id);
+      if (!exists) {
+        return [...prev, { ...video, completedAt: new Date().toISOString() }];
+      }
+      return prev;
+    });
+  };
+
+  const getCurrentStep = () => {
+    if (!resumeUploaded) return 0;
+    if (!skillsExtracted) return 1;
+    if (assessmentResults.length === 0) return 2;
+    if (completedVideos.length === 0) return 3;
+    return 4;
   };
 
   return (
-    <div className="max-w-4xl mx-auto p-4">
-      <ProgressStepper steps={progressSteps} currentStep={currentStep} />
-      
-      <div className="mb-8 p-6 bg-white rounded-lg shadow-md">
-        <h2 className="text-2xl font-bold mb-6 text-gray-800">Resume Skill Analyzer</h2>
-        
-        <div className="mb-4">
-          <label className="block text-gray-700 mb-2">Upload your resume (PDF, DOCX)</label>
+    <div className="p-6 bg-white rounded shadow">
+      {/* Tab Navigation */}
+      <div className="border-b border-gray-200 mb-6">
+        <nav className="flex space-x-8">
+          <button
+            onClick={() => setActiveTab("resume")}
+            className={`py-4 px-1 border-b-2 font-medium text-sm ${
+              activeTab === "resume"
+                ? "border-blue-500 text-blue-600"
+                : "border-transparent text-gray-500 hover:text-gray-700 hover:border-gray-300"
+            }`}
+          >
+            📄 Resume Upload
+          </button>
+          <button
+            onClick={() => setActiveTab("assessment")}
+            disabled={!skillsExtracted}
+            className={`py-4 px-1 border-b-2 font-medium text-sm ${!skillsExtracted ? "text-gray-400 cursor-not-allowed" : 
+              activeTab === "assessment"
+                ? "border-blue-500 text-blue-600"
+                : "border-transparent text-gray-500 hover:text-gray-700 hover:border-gray-300"
+            }`}
+          >
+            📝 Skill Assessment
+          </button>
+          <button
+            onClick={() => setActiveTab("videos")}
+            disabled={weakSkills.length === 0}
+            className={`py-4 px-1 border-b-2 font-medium text-sm ${weakSkills.length === 0 ? "text-gray-400 cursor-not-allowed" :
+              activeTab === "videos"
+                ? "border-blue-500 text-blue-600"
+                : "border-transparent text-gray-500 hover:text-gray-700 hover:border-gray-300"
+            }`}
+          >
+            📚 Video Learning
+          </button>
+          <button
+            onClick={() => setActiveTab("progress")}
+            disabled={assessmentResults.length === 0}
+            className={`py-4 px-1 border-b-2 font-medium text-sm ${assessmentResults.length === 0 ? "text-gray-400 cursor-not-allowed" :
+              activeTab === "progress"
+                ? "border-blue-500 text-blue-600"
+                : "border-transparent text-gray-500 hover:text-gray-700 hover:border-gray-300"
+            }`}
+          >
+            📊 Progress Tracker
+          </button>
+        </nav>
+      </div>
+
+      {/* Progress Stepper */}
+      <ProgressStepper currentStep={getCurrentStep()} steps={progressSteps} />
+
+      {/* Resume Upload Tab */}
+      {activeTab === "resume" && (
+        <div>
+          <h2 className="text-xl font-bold mb-4">Upload Resume and Extract Skills</h2>
+          
           <input
             type="file"
+            multiple
+            accept=".pdf,.txt,.docx"
             onChange={handleFileChange}
-            accept=".pdf,.docx,.doc,.txt"
-            className="block w-full text-gray-700 border border-gray-300 rounded py-2 px-3 mb-3 leading-tight focus:outline-none focus:border-blue-500"
-            disabled={loading}
+            className="mb-4"
           />
-          <p className="text-sm text-gray-600 mb-4">
-            We'll extract skills from your resume and generate personalized skill assessments
-          </p>
-        </div>
-        
-        <div className="flex gap-3">
+
           <button
             onClick={handleUpload}
-            disabled={loading || files.length === 0}
-            className="px-4 py-2 bg-blue-600 text-white rounded-lg hover:bg-blue-700 disabled:opacity-50 flex items-center gap-2"
+            disabled={loading}
+            className="px-4 py-2 bg-blue-600 text-white rounded"
           >
-            {loading ? (
-              <>
-                <div className="animate-spin rounded-full h-4 w-4 border-b-2 border-white"></div>
-                <span>Processing...</span>
-              </>
-            ) : (
-              <>
-                <svg xmlns="http://www.w3.org/2000/svg" className="h-5 w-5" viewBox="0 0 20 20" fill="currentColor">
-                  <path fillRule="evenodd" d="M3 17a1 1 0 011-1h12a1 1 0 110 2H4a1 1 0 01-1-1zM6.293 6.707a1 1 0 010-1.414l3-3a1 1 0 011.414 0l3 3a1 1 0 01-1.414 1.414L11 5.414V13a1 1 0 11-2 0V5.414L7.707 6.707a1 1 0 01-1.414 0z" clipRule="evenodd" />
-                </svg>
-                <span>Extract Skills</span>
-              </>
-            )}
+            {loading ? "Uploading..." : "Upload and Extract Skills"}
           </button>
+
+          {error && <p className="text-red-500 mt-2">{error}</p>}
+
           {profiles.length > 0 && (
-            <button 
-              onClick={clearResults}
-              className="px-4 py-2 bg-gray-500 text-white rounded-lg hover:bg-gray-600 flex items-center gap-2"
+            <div className="mt-6">
+              <h3 className="font-semibold mb-2">Extracted Skills:</h3>
+              {profiles.map((profile, idx) => (
+                <div key={idx} className="mb-4">
+                  <p className="font-medium">{profile.filename}</p>
+                  <ul className="list-disc ml-6">
+                    {profile.skills.map((skill, i) => (
+                      <li key={i} className="flex items-center justify-between">
+                        <span>{skill}</span>
+                        <button 
+                          onClick={() => {
+                            handleStartAssessment(skill);
+                            setActiveTab("assessment");
+                          }}
+                          className="ml-4 px-2 py-1 text-xs bg-blue-600 text-white rounded hover:bg-blue-700"
+                        >
+                          Assess
+                        </button>
+                      </li>
+                    ))}
+                  </ul>
+                </div>
+              ))}
+              
+              {skillsExtracted && (
+                <button
+                  onClick={() => setActiveTab("assessment")}
+                  className="mt-4 px-4 py-2 bg-green-600 text-white rounded hover:bg-green-700"
+                >
+                  Continue to Skill Assessment
+                </button>
+              )}
+            </div>
+          )}
+        </div>
+      )}
+
+      {/* Skill Assessment Tab */}
+      {activeTab === "assessment" && (
+        <div>
+          <h2 className="text-xl font-bold mb-4">Skill Assessment</h2>
+          
+          <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-3 gap-6">
+            {profiles.flatMap(profile => profile.skills).map((skill) => {
+              const existingResult = assessmentResults.find(r => r.skill === skill);
+              const isCompleted = !!existingResult;
+              const score = existingResult?.score || 0;
+
+              return (
+                <div
+                  key={skill}
+                  className={`border rounded-lg p-6 transition-all duration-200 ${
+                    isCompleted
+                      ? "border-green-200 bg-green-50"
+                      : "border-gray-200 bg-white hover:border-blue-300 hover:shadow-md"
+                  }`}
+                >
+                  <div className="flex items-center justify-between mb-4">
+                    <h4 className="font-semibold text-gray-800">{skill}</h4>
+                    {isCompleted && (
+                      <span className="inline-flex items-center px-2 py-1 rounded-full text-xs font-medium bg-green-100 text-green-800">
+                        {score}%
+                      </span>
+                    )}
+                  </div>
+
+                  {isCompleted ? (
+                    <div className="space-y-3">
+                      <div className="w-full bg-gray-200 rounded-full h-2">
+                        <div
+                          className={`h-2 rounded-full ${
+                            score >= 80 ? "bg-green-500" : score >= 60 ? "bg-yellow-500" : "bg-red-500"
+                          }`}
+                          style={{ width: `${score}%` }}
+                        ></div>
+                      </div>
+                      <div className="flex gap-2">
+                        <button
+                          onClick={() => handleRetakeAssessment(skill)}
+                          className="flex-1 px-3 py-2 bg-blue-600 text-white text-sm rounded hover:bg-blue-700 transition-colors"
+                        >
+                          Retake
+                        </button>
+                        <button
+                          onClick={() => setActiveTab("progress")}
+                          className="flex-1 px-3 py-2 bg-gray-600 text-white text-sm rounded hover:bg-gray-700 transition-colors"
+                        >
+                          View Details
+                        </button>
+                      </div>
+                    </div>
+                  ) : (
+                    <button
+                      onClick={() => handleStartAssessment(skill)}
+                      className="w-full px-4 py-2 bg-green-600 text-white rounded hover:bg-green-700 transition-colors font-medium"
+                    >
+                      Start Assessment
+                    </button>
+                  )}
+                </div>
+              );
+            })}
+          </div>
+          
+          {assessmentResults.length > 0 && weakSkills.length > 0 && (
+            <button
+              onClick={() => setActiveTab("videos")}
+              className="mt-6 px-4 py-2 bg-green-600 text-white rounded hover:bg-green-700"
             >
-              <svg xmlns="http://www.w3.org/2000/svg" className="h-5 w-5" viewBox="0 0 20 20" fill="currentColor">
-                <path fillRule="evenodd" d="M9 2a1 1 0 00-.894.553L7.382 4H4a1 1 0 000 2v10a2 2 0 002 2h8a2 2 0 002-2V6a1 1 0 100-2h-3.382l-.724-1.447A1 1 0 0011 2H9zM7 8a1 1 0 012 0v6a1 1 0 11-2 0V8zm5-1a1 1 0 00-1 1v6a1 1 0 102 0V8a1 1 0 00-1-1z" clipRule="evenodd" />
-              </svg>
-              <span>Clear Results</span>
+              Continue to Video Learning
             </button>
           )}
         </div>
-      </div>
+      )}
 
-      {error && (
-        <div className="mb-6 p-4 bg-red-100 border border-red-400 text-red-700 rounded-lg flex items-center gap-3">
-          <svg xmlns="http://www.w3.org/2000/svg" className="h-6 w-6 text-red-500" fill="none" viewBox="0 0 24 24" stroke="currentColor">
-            <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M12 9v2m0 4h.01m-6.938 4h13.856c1.54 0 2.502-1.667 1.732-3L13.732 4c-.77-1.333-2.694-1.333-3.464 0L3.34 16c-.77 1.333.192 3 1.732 3z" />
-          </svg>
-          <span>{error}</span>
+      {/* Video Learning Tab */}
+      {activeTab === "videos" && (
+        <div>
+          <h2 className="text-xl font-bold mb-4">Video Learning for Weak Skills</h2>
+          <VideoRecommendations
+            weakSkills={weakSkills}
+            onVideoComplete={handleVideoComplete}
+          />
+          
+          {completedVideos.length > 0 && (
+            <button
+              onClick={() => setActiveTab("progress")}
+              className="mt-6 px-4 py-2 bg-green-600 text-white rounded hover:bg-green-700"
+            >
+              View Progress Tracker
+            </button>
+          )}
         </div>
       )}
 
-      {profiles.length > 0 && (
-        <div className="space-y-6">
-          <div className="p-4 bg-green-50 border border-green-100 rounded-lg">
-            <h3 className="text-lg font-semibold text-green-800 mb-3 flex items-center gap-2">
-              <svg xmlns="http://www.w3.org/2000/svg" className="h-5 w-5" viewBox="0 0 20 20" fill="currentColor">
-                <path fillRule="evenodd" d="M6.267 3.455a3.066 3.066 0 001.745-.723 3.066 3.066 0 013.976 0 3.066 3.066 0 001.745.723 3.066 3.066 0 012.812 2.812c.051.643.304 1.254.723 1.745a3.066 3.066 0 010 3.976 3.066 3.066 0 00-.723 1.745 3.066 3.066 0 01-2.812 2.812 3.066 3.066 0 00-1.745.723 3.066 3.066 0 01-3.976 0 3.066 3.066 0 00-1.745-.723 3.066 3.066 0 01-2.812-2.812 3.066 3.066 0 00-.723-1.745 3.066 3.066 0 010-3.976 3.066 3.066 0 00.723-1.745 3.066 3.066 0 012.812-2.812zm7.44 5.252a1 1 0 00-1.414-1.414L9 10.586 7.707 9.293a1 1 0 00-1.414 1.414l2 2a1 1 0 001.414 0l4-4z" clipRule="evenodd" />
-              </svg>
-              <span>Extracted Skills</span>
-            </h3>
-            {profiles.map((p, idx) => (
-              <div key={idx} className="mb-6 p-4 bg-white border border-green-200 rounded-lg shadow-sm">
-                <div className="flex justify-between items-start mb-4">
-                  <div>
-                    <p className="font-medium text-lg text-gray-800">{p.filename}</p>
-                    <p className="text-sm text-gray-600">
-                      Extracted {p.skillsCount} skills from {p.textLength} characters
-                    </p>
-                  </div>
-                  <span className="text-xs text-gray-500 bg-gray-100 px-2 py-1 rounded">
-                    {new Date(p.processingTime).toLocaleTimeString()}
-                  </span>
-                </div>
-                
-                {p.skills.length > 0 ? (
-                  <div>
-                    <div className="mb-4">
-                      <div className="flex items-center justify-between mb-3">
-                        <h4 className="font-medium text-gray-700 flex items-center gap-2">
-                          <svg xmlns="http://www.w3.org/2000/svg" className="h-5 w-5 text-blue-500" viewBox="0 0 20 20" fill="currentColor">
-                            <path d="M9 2a1 1 0 000 2h2a1 1 0 100-2H9z" />
-                            <path fillRule="evenodd" d="M4 5a2 2 0 012-2 3 3 0 003 3h2a3 3 0 003-3 2 2 0 012 2v11a2 2 0 01-2 2H6a2 2 0 01-2-2V5zm3 4a1 1 0 000 2h.01a1 1 0 100-2H7zm3 0a1 1 0 000 2h3a1 1 0 100-2h-3zm-3 4a1 1 0 100 2h.01a1 1 0 100-2H7zm3 0a1 1 0 100 2h3a1 1 0 100-2h-3z" clipRule="evenodd" />
-                          </svg>
-                          <span>Skills Found ({p.skills.length})</span>
-                        </h4>
-                        <span className="text-xs text-blue-600 bg-blue-50 px-2 py-1 rounded-full">
-                          Click any skill to take an assessment
-                        </span>
-                      </div>
-                      <div className="flex flex-wrap gap-2">
-                        {p.skills.map((skill, i) => {
-                          const hasAssessment = assessmentResults[skill];
-                          const isGenerating = generatingSkill === skill;
-                          
-                          return (
-                            <div key={i} className="relative group">
-                              <button
-                                className={`px-3 py-2 text-sm rounded-full cursor-pointer transition-all duration-200 flex items-center gap-1 ${
-                                  hasAssessment 
-                                    ? 'bg-green-100 text-green-800 border border-green-300 hover:bg-green-200' 
-                                    : isGenerating
-                                    ? 'bg-yellow-100 text-yellow-800 border border-yellow-300 cursor-wait'
-                                    : 'bg-blue-100 text-blue-800 hover:bg-blue-200 border border-blue-300'
-                                }`}
-                                onClick={() => !isGenerating && generateIndividualSkillAssessment(skill)}
-                                disabled={isGenerating}
-                                title={hasAssessment ? `Assessed: ${hasAssessment.score}%` : isGenerating ? 'Generating assessment...' : 'Click to assess this skill'}
-                              >
-                                {isGenerating && (
-                                  <div className="animate-spin rounded-full h-3 w-3 border-b-2 border-yellow-600"></div>
-                                )}
-                                {skill}
-                                {hasAssessment && (
-                                  <span className="ml-1 text-xs font-bold bg-green-200 px-1 rounded">
-                                    {hasAssessment.score}%
-                                  </span>
-                                )}
-                              </button>
-                              {hasAssessment && (
-                                <div className="absolute -top-1 -right-1 w-4 h-4 bg-green-500 rounded-full flex items-center justify-center">
-                                  <span className="text-white text-xs font-bold">✓</span>
-                                </div>
-                              )}
-                              
-                              {/* Video recording button for low scores */}
-                              {hasAssessment && hasAssessment.score < 80 && (
-                                <button
-                                  onClick={(e) => {
-                                    e.stopPropagation();
-                                    setSelectedSkill(skill);
-                                    setShowVideoRecorder(true);
-                                  }}
-                                  className="absolute -bottom-1 -right-1 w-6 h-6 bg-purple-500 rounded-full flex items-center justify-center hover:bg-purple-600"
-                                  title="Record video demonstration"
-                                >
-                                  <span className="text-white text-xs">🎬</span>
-                                </button>
-                              )}
-                            </div>
-                          );
-                        })}
-                      </div>
-                    </div>
-                    <div className="flex gap-2 flex-wrap mt-4">
-                      <button 
-                        onClick={() => generateSkillScores(idx)}
-                        className="px-4 py-2 bg-green-600 text-white text-sm rounded-lg hover:bg-green-700 flex items-center gap-2"
-                      >
-                        <svg xmlns="http://www.w3.org/2000/svg" className="h-5 w-5" viewBox="0 0 20 20" fill="currentColor">
-                          <path d="M2 10a8 8 0 018-8v8h8a8 8 0 11-16 0z" />
-                          <path d="M12 2.252A8.014 8.014 0 0117.748 8H12V2.252z" />
-                        </svg>
-                        <span>Generate Skill Chart</span>
-                      </button>
-                      <button 
-                        onClick={() => {
-                          if (p.skills.length > 0) {
-                            generateIndividualSkillAssessment(p.skills[0]); // Start with first skill
-                          }
-                        }}
-                        className="px-4 py-2 bg-purple-600 text-white text-sm rounded-lg hover:bg-purple-700 flex items-center gap-2"
-                        disabled={p.skills.length === 0}
-                      >
-                        <svg xmlns="http://www.w3.org/2000/svg" className="h-5 w-5" viewBox="0 0 20 20" fill="currentColor">
-                          <path fillRule="evenodd" d="M10 18a8 8 0 100-16 8 8 0 000 16zm3.707-9.293a1 1 0 00-1.414-1.414L9 10.586 7.707 9.293a1 1 0 00-1.414 1.414l2 2a1 1 0 001.414 0l4-4z" clipRule="evenodd" />
-                        </svg>
-                        <span>Start Assessment</span>
-                      </button>
-                    </div>
-                    {p.skillScores && <SkillChart skills={p.skillScores} />}
-                  </div>
-                ) : (
-                  <p className="text-gray-500">No skills found in resume</p>
-                )}
-              </div>
-            ))}
-            
-            {/* Assessment Results Summary */}
-            {Object.keys(assessmentResults).length > 0 && (
-              <div className="mt-6 p-4 bg-gradient-to-r from-purple-50 to-blue-50 border border-purple-200 rounded-lg">
-                <h4 className="font-semibold mb-3 text-purple-800">🎯 Assessment Results Summary</h4>
-                <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-3 gap-3">
-                  {Object.entries(assessmentResults).map(([skill, result]) => (
-                    <div key={skill} className="bg-white p-3 rounded-lg border">
-                      <div className="flex justify-between items-center mb-1">
-                        <span className="font-medium text-sm">{skill}</span>
-                        <span className={`font-bold text-sm ${
-                          result.score >= 80 ? 'text-green-600' : 
-                          result.score >= 60 ? 'text-yellow-600' : 'text-red-600'
-                        }`}>
-                          {result.score}%
-                        </span>
-                      </div>
-                      <div className="w-full bg-gray-200 rounded-full h-1.5">
-                        <div 
-                          className={`h-1.5 rounded-full ${
-                            result.score >= 80 ? 'bg-green-500' : 
-                            result.score >= 60 ? 'bg-yellow-500' : 'bg-red-500'
-                          }`}
-                          style={{ width: `${result.score}%` }}
-                        ></div>
-                      </div>
-                      <div className="text-xs text-gray-600 mt-1">
-                        {result.results?.weak_skills?.length > 0 ? 
-                          `${result.results.weak_skills.length} areas to improve` : 
-                          'Strong performance'
-                        }
-                      </div>
-                    </div>
-                  ))}
-                </div>
-              </div>
-            )}
-
-            {/* Individual Skill Assessment Instructions */}
-            {profiles.length > 0 && (
-              <div className="mt-6 p-4 bg-gradient-to-r from-green-50 to-blue-50 border border-green-200 rounded-lg">
-                <h4 className="font-semibold mb-3 text-green-800">🎯 Individual Skill Assessments</h4>
-                <div className="text-sm text-green-700 mb-3">
-                  <p className="mb-2"><strong>How it works:</strong></p>
-                  <ul className="list-disc list-inside space-y-1 ml-2">
-                    <li>Click on any skill to generate a personalized assessment for that specific skill</li>
-                    <li>Each assessment is tailored to the skill you select</li>
-                    <li>Complete the assessment to get your score and improvement recommendations</li>
-                    <li>Assessed skills will show your score and a green checkmark</li>
-                  </ul>
-                </div>
-                <div className="flex gap-2 flex-wrap">
-                  <button 
-                    onClick={generateAssessmentForAllSkills}
-                    disabled={generatingAssessment}
-                    className="px-4 py-2 bg-blue-600 text-white rounded hover:bg-blue-700 disabled:opacity-50"
-                  >
-                    {generatingAssessment ? "Generating..." : "Generate All Skill Assessments"}
-                  </button>
-                  <span className="text-xs text-gray-600 self-center">
-                    Or click individual skills above for targeted assessments
-                  </span>
-                </div>
-              </div>
-            )}
-          </div>
+      {/* Progress Tracker Tab */}
+      {activeTab === "progress" && (
+        <div>
+          <h2 className="text-xl font-bold mb-4">Skill Progress Tracker</h2>
+          <SkillProgressTracker
+            assessmentResults={assessmentResults}
+            onRetakeAssessment={(skill) => {
+              handleRetakeAssessment(skill);
+              setActiveTab("assessment");
+            }}
+          />
         </div>
       )}
-      
-      {/* Skill Assessment Modal */}
-      {showAssessment && selectedSkill && (
+
+      {/* Assessment Modal */}
+      {showAssessment && currentAssessment && (
         <SkillAssessment
-          skill={selectedSkill}
+          skill={currentAssessment}
           onComplete={handleAssessmentComplete}
-          onClose={closeAssessment}
+          onClose={() => {
+            setShowAssessment(false);
+            setCurrentAssessment(null);
+          }}
         />
-      )}
-      
-      {/* Video Recorder Modal */}
-      {showVideoRecorder && selectedSkill && (
-        <div className="fixed inset-0 bg-black bg-opacity-60 flex items-center justify-center z-50 p-4">
-          <div className="bg-white p-6 rounded-lg max-w-2xl w-full shadow-xl">
-            <div className="flex justify-between items-center mb-4 border-b pb-3">
-              <h3 className="text-xl font-bold text-purple-800 flex items-center gap-2">
-                <svg xmlns="http://www.w3.org/2000/svg" className="h-6 w-6 text-purple-600" fill="none" viewBox="0 0 24 24" stroke="currentColor">
-                  <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M15 10l4.553-2.276A1 1 0 0121 8.618v6.764a1 1 0 01-1.447.894L15 14M5 18h8a2 2 0 002-2V8a2 2 0 00-2-2H5a2 2 0 00-2 2v8a2 2 0 002 2z" />
-                </svg>
-                <span>Record Video Demonstration: {selectedSkill}</span>
-              </h3>
-              <button 
-                onClick={() => {
-                  setShowVideoRecorder(false);
-                  setSelectedSkill("");
-                }}
-                className="text-gray-500 hover:text-gray-700 bg-gray-100 hover:bg-gray-200 rounded-full p-2 transition-colors"
-              >
-                <svg xmlns="http://www.w3.org/2000/svg" className="h-5 w-5" fill="none" viewBox="0 0 24 24" stroke="currentColor">
-                  <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M6 18L18 6M6 6l12 12" />
-                </svg>
-              </button>
-            </div>
-            
-            <div className="bg-purple-50 p-3 rounded-lg mb-4 text-sm text-purple-800 flex items-start gap-2">
-              <svg xmlns="http://www.w3.org/2000/svg" className="h-5 w-5 flex-shrink-0 mt-0.5" viewBox="0 0 20 20" fill="currentColor">
-                <path fillRule="evenodd" d="M18 10a8 8 0 11-16 0 8 8 0 0116 0zm-7-4a1 1 0 11-2 0 1 1 0 012 0zM9 9a1 1 0 000 2v3a1 1 0 001 1h1a1 1 0 100-2v-3a1 1 0 00-1-1H9z" clipRule="evenodd" />
-              </svg>
-              <p>Recording a video demonstration will help improve your skill profile and provide evidence of your practical abilities.</p>
-            </div>
-            
-            <VideoRecorder
-              skill={selectedSkill}
-              onVideoRecorded={(videoData) => {
-                setRecordedVideos(prev => [...prev, videoData]);
-                setShowVideoRecorder(false);
-                setSelectedSkill("");
-                
-                // Update the assessment result to show video was recorded
-                if (selectedSkill && assessmentResults[selectedSkill]) {
-                  const updatedResults = {
-                    ...assessmentResults,
-                    [selectedSkill]: {
-                      ...assessmentResults[selectedSkill],
-                      videoRecorded: true
-                    }
-                  };
-                  setAssessmentResults(updatedResults);
-                }
-              }}
-              onClose={() => {
-                setShowVideoRecorder(false);
-                setSelectedSkill("");
-              }}
-            />
-          </div>
-        </div>
-      )}
-      
-      {/* Notification */}
-      {notification && (
-        <div className={`fixed bottom-4 right-4 p-4 rounded-lg shadow-lg max-w-md z-50 flex items-center gap-3 ${notification.type === 'success' ? 'bg-green-100 text-green-800 border border-green-200' : 'bg-red-100 text-red-800 border border-red-200'}`}>
-          <svg xmlns="http://www.w3.org/2000/svg" className="h-5 w-5" viewBox="0 0 20 20" fill="currentColor">
-            {notification.type === 'success' ? (
-              <path fillRule="evenodd" d="M10 18a8 8 0 100-16 8 8 0 000 16zm3.707-9.293a1 1 0 00-1.414-1.414L9 10.586 7.707 9.293a1 1 0 00-1.414 1.414l2 2a1 1 0 001.414 0l4-4z" clipRule="evenodd" />
-            ) : (
-              <path fillRule="evenodd" d="M18 10a8 8 0 11-16 0 8 8 0 0116 0zm-7 4a1 1 0 11-2 0 1 1 0 012 0zm-1-9a1 1 0 00-1 1v4a1 1 0 102 0V6a1 1 0 00-1-1z" clipRule="evenodd" />
-            )}
-          </svg>
-          <span>{notification.message}</span>
-          <button 
-            onClick={() => setNotification(null)}
-            className="ml-auto text-gray-500 hover:text-gray-700"
-          >
-            <svg xmlns="http://www.w3.org/2000/svg" className="h-4 w-4" fill="none" viewBox="0 0 24 24" stroke="currentColor">
-              <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M6 18L18 6M6 6l12 12" />
-            </svg>
-          </button>
-        </div>
       )}
     </div>
   );

@@ -239,7 +239,7 @@ export default function SkillAssessment({ skill, onComplete, onClose }) {
             </div>
           </div>
 
-          {results.weak_skills && results.weak_skills.length > 0 && (
+          {results.score < 40 && results.weak_skills && results.weak_skills.length > 0 && (
             <div className="mb-6">
               <h4 className="font-semibold mb-3 text-red-600">⚠️ Areas for Improvement:</h4>
               <div className="bg-red-50 border border-red-200 rounded-lg p-4">
@@ -252,7 +252,7 @@ export default function SkillAssessment({ skill, onComplete, onClose }) {
             </div>
           )}
 
-          {results.recommendations && results.recommendations.length > 0 && (
+          {results.score < 40 && results.recommendations && results.recommendations.length > 0 && (
             <div className="mb-6">
               <h4 className="font-semibold mb-3 text-blue-600">📚 Recommended Videos:</h4>
               <div className="space-y-3">
@@ -304,7 +304,7 @@ export default function SkillAssessment({ skill, onComplete, onClose }) {
           )}
 
           {/* Video Recording Section for Weak Skills */}
-          {results.score < 80 && (
+          {results.score < 40 && (
             <div className="mb-6">
               <h4 className="font-semibold mb-3 text-purple-600">🎥 Record Skill Demonstration:</h4>
               <div className="bg-purple-50 border border-purple-200 rounded-lg p-4">

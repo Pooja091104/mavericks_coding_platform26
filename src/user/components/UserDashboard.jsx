@@ -9,8 +9,7 @@ import LearningPathTable from './LearningPathTable';
 import HackathonPanel from './HackathonPanel';
 import Leaderboard from './Leaderboard';
 import ProgressStepper from './ProgressStepper';
-import ChatBox from '../../analytics/components/ChatBox';
-import { Target, BookOpen, Video, Trophy, MessageSquare } from 'lucide-react';
+import { Target, BookOpen, Video, Trophy } from 'lucide-react';
 
 export default function UserDashboard({ user, onLogout }) {
   const [activeTab, setActiveTab] = useState('overview');
@@ -179,7 +178,7 @@ export default function UserDashboard({ user, onLogout }) {
               <h2 className="card-title">Leaderboard</h2>
               <p className="card-subtitle">See how you rank among other learners</p>
             </div>
-            <Leaderboard user={user} />
+            <Leaderboard />
           </div>
         );
         
@@ -192,19 +191,6 @@ export default function UserDashboard({ user, onLogout }) {
             </div>
             <div className="text-center py-8">
               <p className="text-gray-500">Analytics dashboard coming soon...</p>
-            </div>
-          </div>
-        );
-        
-      case 'chatbot':
-        return (
-          <div className="card">
-            <div className="card-header">
-              <h2 className="card-title">AI Assistant</h2>
-              <p className="card-subtitle">Get help with your coding questions</p>
-            </div>
-            <div className="p-4">
-              <ChatBox />
             </div>
           </div>
         );
@@ -263,4 +249,4 @@ export default function UserDashboard({ user, onLogout }) {
       </div>
     </div>
   );
-}
+} 
