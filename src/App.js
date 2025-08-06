@@ -1,19 +1,57 @@
-import { useState } from "react";
-import Dashboard from "./pages/Dashboard"; // Admin dashboard
-import LoginPage from "./pages/LoginPage"; // Login page
-import UserDash from "./user/UserDash"; // User dashboard
-import AdminDashboard from "./pages/AdminDashboard"; // New enhanced admin dashboard
-import styles from "./styles.css";
+import { useState, useEffect } from "react";
+import { onAuthStateChange } from "./firebaseConfig";
+import AuthContainer from "./pages/AuthContainer";
+import UserDashboard from "./user/components/UserDashboard";
+import AdminDashboard from "./pages/AdminDashboard";
+import LoadingSpinner from "./components/LoadingSpinner";
+import "./styles.css";
 
 export default function App() {
   const [user, setUser] = useState(null);
+  const [loading, setLoading] = useState(true);
 
-  // Example role-based view (optional: can be extended later)
-  const isAdmin = user?.email === "mavadmin@gmail.com"; // Simple check for now
+  useEffect(() => {
+    const unsubscribe = onAuthStateChange((user) => {
+      if (user) {
+        setUser({
+          uid: user.uid,
+          email: user.email,
+          displayName: user.displayName || user.email?.split('@')[0] || 'User',
+          role: user.email === 'admin@demo.com' || user.email === 'mavadmin@gmail.com' ? 'admin' : 'user'
+        });
+      } else {
+        setUser(null);
+      }
+      setLoading(false);
+    });
 
-  if (!user) {
-    return <LoginPage onLogin={(loggedInUser) => setUser(loggedInUser)} />;
+    return () => unsubscribe();
+  }, []);
+
+  const handleLogin = (userData) => {
+    setUser(userData);
+  };
+
+  const handleLogout = () => {
+    setUser(null);
+  };
+
+  if (loading) {
+    return (
+      <div className="min-h-screen bg-gray-50 flex items-center justify-center">
+        <LoadingSpinner size="xl" text="Loading Mavericks Coding Platform..." />
+      </div>
+    );
   }
 
-  return isAdmin ? <AdminDashboard /> : <UserDash />;
+  if (!user) {
+    return <AuthContainer onLogin={handleLogin} />;
+  }
+
+  // Render admin or user dashboard based on role
+  if (user.role === 'admin') {
+    return <AdminDashboard user={user} onLogout={handleLogout} />;
+  }
+
+  return <UserDashboard user={user} onLogout={handleLogout} />;
 }

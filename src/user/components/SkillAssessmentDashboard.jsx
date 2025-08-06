@@ -2,6 +2,7 @@ import { useState, useEffect } from "react";
 import SkillAssessment from "./SkillAssessment";
 import VideoRecommendations from "./VideoRecommendations";
 import SkillProgressTracker from "./SkillProgressTracker";
+import LearningPathCompletion from "./LearningPathCompletion";
 
 export default function SkillAssessmentDashboard() {
   const [assessmentResults, setAssessmentResults] = useState([]);
@@ -10,6 +11,7 @@ export default function SkillAssessmentDashboard() {
   const [weakSkills, setWeakSkills] = useState([]);
   const [completedVideos, setCompletedVideos] = useState([]);
   const [activeTab, setActiveTab] = useState("progress"); // progress, assessments, videos
+  const [showCompletion, setShowCompletion] = useState(false);
 
   // Available skills for assessment
   const availableSkills = [
@@ -46,6 +48,18 @@ export default function SkillAssessmentDashboard() {
     // Save completed videos to localStorage
     localStorage.setItem("completedVideos", JSON.stringify(completedVideos));
   }, [completedVideos]);
+
+  // Check if learning path is completed
+  useEffect(() => {
+    const allSkillsAssessed = assessmentResults.length === availableSkills.length;
+    const allVideosCompleted = completedVideos.length >= weakSkills.length;
+    const highScores = assessmentResults.filter(result => (result.score || 0) >= 80).length;
+    
+    // Show completion if all skills assessed, videos completed, and high scores achieved
+    if (allSkillsAssessed && allVideosCompleted && highScores >= availableSkills.length * 0.8) {
+      setShowCompletion(true);
+    }
+  }, [assessmentResults, completedVideos, weakSkills]);
 
   const handleAssessmentComplete = (result) => {
     const newResult = {
@@ -110,6 +124,24 @@ export default function SkillAssessmentDashboard() {
     return assessmentResults.filter(result => (result.score || 0) < 60).length;
   };
 
+  // Show completion page if learning path is finished
+  if (showCompletion) {
+    return (
+      <LearningPathCompletion 
+        assessmentResults={assessmentResults}
+        completedVideos={completedVideos}
+        onReset={() => {
+          setShowCompletion(false);
+          setAssessmentResults([]);
+          setCompletedVideos([]);
+          setWeakSkills([]);
+          localStorage.removeItem("assessmentResults");
+          localStorage.removeItem("completedVideos");
+        }}
+      />
+    );
+  }
+
   return (
     <div className="p-6 bg-gray-50 min-h-screen">
       <div className="max-w-7xl mx-auto">
@@ -169,6 +201,27 @@ export default function SkillAssessmentDashboard() {
             </div>
           </div>
         </div>
+
+        {/* Progress to Completion */}
+        {assessmentResults.length > 0 && (
+          <div className="bg-white rounded-lg shadow-md p-6 mb-8">
+            <div className="flex items-center justify-between mb-4">
+              <h3 className="text-lg font-semibold text-gray-800">🎯 Learning Path Progress</h3>
+              <span className="text-sm text-gray-600">
+                {assessmentResults.length}/{availableSkills.length} skills assessed
+              </span>
+            </div>
+            <div className="w-full bg-gray-200 rounded-full h-3">
+              <div 
+                className="bg-gradient-to-r from-blue-500 to-green-500 h-3 rounded-full transition-all duration-300"
+                style={{ width: `${(assessmentResults.length / availableSkills.length) * 100}%` }}
+              ></div>
+            </div>
+            <p className="text-sm text-gray-600 mt-2">
+              {availableSkills.length - assessmentResults.length} skills remaining to complete your learning path
+            </p>
+          </div>
+        )}
 
         {/* Tab Navigation */}
         <div className="bg-white rounded-lg shadow-md mb-8">

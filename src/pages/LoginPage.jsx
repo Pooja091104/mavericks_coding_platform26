@@ -14,11 +14,8 @@ export default function LoginPage({ onLogin }) {
     setError("");
 
     try {
-      const userCredential = await signInWithEmailAndPassword(
-        auth,
-        email,
-        password
-      );
+      const userCredential = await signInWithEmail(email, password);
+
       console.log("Logged in:", userCredential.user);
       onLogin(userCredential.user); // callback to parent
     } catch (err) {
