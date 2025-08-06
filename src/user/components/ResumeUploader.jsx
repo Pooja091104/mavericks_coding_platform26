@@ -135,10 +135,12 @@ export default function ResumeUploader({ user }) {
     // Extract weak skills for video recommendations
     if (result.score < 40) {
       // If score is below 40%, add the skill to weak skills list
+      console.log("Score below 40% detected:", result.skill, result.score);
       setWeakSkills(prev => {
         const newWeakSkills = [...prev];
         if (!newWeakSkills.includes(result.skill)) {
           newWeakSkills.push(result.skill);
+          console.log("Added to weak skills:", result.skill);
         }
         return newWeakSkills;
       });

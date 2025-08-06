@@ -1,17 +1,18 @@
-import React, { useState, useEffect } from 'react';
+import React, { useState } from 'react';
 import { Users, TrendingUp, Award, Activity, Settings, LogOut } from 'lucide-react';
 import RecentActivityTable from '../analytics/components/RecentActivityTable';
 import ChatBox from '../analytics/components/ChatBox';
+import ChatInteractions from '../analytics/components/ChatInteractions';
 import HackathonPanel from '../analytics/components/HackathonPanel';
 
 export default function AdminDashboard({ user, onLogout }) {
   const [activeTab, setActiveTab] = useState('overview');
-  const [stats, setStats] = useState({
+  const stats = {
     totalUsers: 1247,
     activeUsers: 892,
     assessmentsCompleted: 3456,
     averageScore: 78.5
-  });
+  };
 
   const tabs = [
     { id: 'overview', label: 'Overview', icon: Activity },
@@ -163,7 +164,7 @@ export default function AdminDashboard({ user, onLogout }) {
                 </div>
               </div>
 
-              {/* Quick Actions */}
+              {/* Quick Actions and Admin Chat */}
               <div className="space-y-6">
                 <div className="card">
                   <div className="card-header">
@@ -182,6 +183,17 @@ export default function AdminDashboard({ user, onLogout }) {
                     <button className="w-full btn btn-secondary">
                       Generate Report
                     </button>
+                  </div>
+                </div>
+
+                {/* Admin AI Assistant */}
+                <div className="card">
+                  <div className="card-header">
+                    <h2 className="card-title">Admin AI Assistant</h2>
+                    <p className="card-subtitle">Get help with administrative tasks</p>
+                  </div>
+                  <div className="p-4">
+                    <ChatBox user={user} trackUserInteraction={false} />
                   </div>
                 </div>
 
@@ -226,13 +238,51 @@ export default function AdminDashboard({ user, onLogout }) {
         )}
 
         {activeTab === 'analytics' && (
-          <div className="card">
-            <div className="card-header">
-              <h2 className="card-title">Analytics Dashboard</h2>
-              <p className="card-subtitle">Detailed platform analytics and insights</p>
+          <div className="space-y-6">
+            <div className="card">
+              <div className="card-header">
+                <h2 className="card-title">Analytics Dashboard</h2>
+                <p className="card-subtitle">Detailed platform analytics and insights</p>
+              </div>
+              <div className="grid grid-cols-1 lg:grid-cols-3 gap-6 p-6">
+                <div className="metrics-card">
+                  <div className="flex items-center justify-between mb-4">
+                    <div className="p-2 bg-blue-100 rounded-lg">
+                      <Users size={20} className="text-blue-600" />
+                    </div>
+                  </div>
+                  <div className="metrics-title">Total Interactions</div>
+                  <div className="metrics-value">1,248</div>
+                  <div className="metrics-subtitle">User-AI conversations</div>
+                </div>
+                
+                <div className="metrics-card">
+                  <div className="flex items-center justify-between mb-4">
+                    <div className="p-2 bg-green-100 rounded-lg">
+                      <Activity size={20} className="text-green-600" />
+                    </div>
+                  </div>
+                  <div className="metrics-title">Avg. Response Time</div>
+                  <div className="metrics-value">1.8s</div>
+                  <div className="metrics-subtitle">AI response latency</div>
+                </div>
+                
+                <div className="metrics-card">
+                  <div className="flex items-center justify-between mb-4">
+                    <div className="p-2 bg-purple-100 rounded-lg">
+                      <TrendingUp size={20} className="text-purple-600" />
+                    </div>
+                  </div>
+                  <div className="metrics-title">User Satisfaction</div>
+                  <div className="metrics-value">92%</div>
+                  <div className="metrics-subtitle">Based on feedback</div>
+                </div>
+              </div>
             </div>
-            <div className="text-center py-8">
-              <p className="text-gray-500">Analytics dashboard coming soon...</p>
+            
+            {/* Chat Interactions Section */}
+            <div className="card">
+              <ChatInteractions />
             </div>
           </div>
         )}
@@ -261,4 +311,4 @@ export default function AdminDashboard({ user, onLogout }) {
       </main>
     </div>
   );
-} 
+}

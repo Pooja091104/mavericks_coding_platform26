@@ -88,12 +88,53 @@ export default function VideoRecommendations({ weakSkills, onVideoComplete }) {
         skill: "Database Design",
         difficulty: "beginner"
       }
+    ],
+    "Java": [
+      {
+        id: "java-1",
+        title: "Java Programming for Beginners",
+        description: "Learn Java programming from scratch with hands-on examples",
+        url: "https://www.youtube.com/watch?v=eIrMbAQSU34",
+        duration: "2:30:00",
+        skill: "Java",
+        difficulty: "beginner"
+      },
+      {
+        id: "java-2",
+        title: "Java Data Structures and Algorithms",
+        description: "Master data structures and algorithms in Java",
+        url: "https://www.youtube.com/watch?v=BBpAmxU_NQo",
+        duration: "3:15:00",
+        skill: "Java",
+        difficulty: "intermediate"
+      }
+    ],
+    "SQL": [
+      {
+        id: "sql-1",
+        title: "SQL Tutorial for Beginners",
+        description: "Learn SQL basics for database management and querying",
+        url: "https://www.youtube.com/watch?v=HXV3zeQKqGY",
+        duration: "4:20:00",
+        skill: "SQL",
+        difficulty: "beginner"
+      },
+      {
+        id: "sql-2",
+        title: "Advanced SQL Techniques",
+        description: "Master complex SQL queries, joins, and database optimization",
+        url: "https://www.youtube.com/watch?v=qw--VYLpxG4",
+        duration: "2:10:00",
+        skill: "SQL",
+        difficulty: "advanced"
+      }
     ]
   };
 
   useEffect(() => {
     if (weakSkills && weakSkills.length > 0) {
       generateRecommendations();
+      console.log("Weak skills detected:", weakSkills);
     }
   }, [weakSkills]);
 
@@ -105,10 +146,44 @@ export default function VideoRecommendations({ weakSkills, onVideoComplete }) {
       const recommendations = [];
       
       weakSkills.forEach(skill => {
-        const skillVideos = videoDatabase[skill] || [];
+        console.log("Looking for videos for skill:", skill);
+        
+        // Try exact match first
+        let skillVideos = videoDatabase[skill] || [];
+        
+        // If no videos found, try case-insensitive match
+        if (skillVideos.length === 0) {
+          const skillLower = skill.toLowerCase();
+          const databaseKeys = Object.keys(videoDatabase);
+          
+          for (const key of databaseKeys) {
+            if (key.toLowerCase() === skillLower) {
+              skillVideos = videoDatabase[key];
+              console.log("Found videos using case-insensitive match:", key);
+              break;
+            }
+          }
+        }
+        
+        // If still no videos found, create a generic recommendation
+        if (skillVideos.length === 0) {
+          console.log("No predefined videos found, creating generic recommendation for:", skill);
+          skillVideos = [{
+            id: `${skill.toLowerCase().replace(/\s+/g, '-')}-1`,
+            title: `${skill} Tutorial for Beginners`,
+            description: `Learn ${skill} fundamentals and best practices`,
+            url: `https://www.youtube.com/results?search_query=${encodeURIComponent(skill)}+tutorial+beginner`,
+            duration: "Varies",
+            skill: skill,
+            difficulty: "beginner"
+          }];
+        }
+        
+        console.log("Found videos:", skillVideos.length);
         recommendations.push(...skillVideos);
       });
       
+      console.log("Total recommended videos:", recommendations.length);
       setRecommendedVideos(recommendations);
       setLoading(false);
     }, 1000);
@@ -251,4 +326,4 @@ export default function VideoRecommendations({ weakSkills, onVideoComplete }) {
       )}
     </div>
   );
-} 
+}

@@ -5,11 +5,10 @@ import Sidebar from '../../components/Sidebar';
 import MetricsCard from '../../components/MetricsCard';
 import ResumeUploader from './ResumeUploader';
 import SkillAssessmentDashboard from './SkillAssessmentDashboard';
-import LearningPathTable from './LearningPathTable';
 import HackathonPanel from './HackathonPanel';
 import Leaderboard from './Leaderboard';
 import ProgressStepper from './ProgressStepper';
-import { Target, BookOpen, Video, Trophy } from 'lucide-react';
+import { Target, Trophy, BookOpen, Video } from 'lucide-react';
 
 export default function UserDashboard({ user, onLogout }) {
   const [activeTab, setActiveTab] = useState('overview');
@@ -138,16 +137,7 @@ export default function UserDashboard({ user, onLogout }) {
           </div>
         );
         
-      case 'learning':
-        return (
-          <div className="card">
-            <div className="card-header">
-              <h2 className="card-title">Learning Path</h2>
-              <p className="card-subtitle">Track your progress through different learning modules</p>
-            </div>
-            <LearningPathTable learningPath={userProfile?.learningPath || []} />
-          </div>
-        );
+
         
       case 'assessment':
         return (
@@ -182,31 +172,7 @@ export default function UserDashboard({ user, onLogout }) {
           </div>
         );
         
-      case 'analytics':
-        return (
-          <div className="card">
-            <div className="card-header">
-              <h2 className="card-title">Analytics</h2>
-              <p className="card-subtitle">Detailed insights into your learning journey</p>
-            </div>
-            <div className="text-center py-8">
-              <p className="text-gray-500">Analytics dashboard coming soon...</p>
-            </div>
-          </div>
-        );
-        
-      case 'videos':
-        return (
-          <div className="card">
-            <div className="card-header">
-              <h2 className="card-title">Video Learning</h2>
-              <p className="card-subtitle">Learn through curated video content</p>
-            </div>
-            <div className="text-center py-8">
-              <p className="text-gray-500">Video learning module coming soon...</p>
-            </div>
-          </div>
-        );
+
         
       case 'resume':
         return (
@@ -249,4 +215,4 @@ export default function UserDashboard({ user, onLogout }) {
       </div>
     </div>
   );
-} 
+}

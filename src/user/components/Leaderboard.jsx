@@ -1,4 +1,4 @@
-import { useState, useEffect } from 'react';
+import { useState, useEffect, useCallback } from 'react';
 
 export default function Leaderboard({ user }) {
   // State management
@@ -6,13 +6,8 @@ export default function Leaderboard({ user }) {
   const [userRank, setUserRank] = useState(null);
   const [activeTab, setActiveTab] = useState('overall');
 
-  // Load data on component mount
-  useEffect(() => {
-    loadLeaderboardData();
-  }, []);
-
   // Data loading function
-  const loadLeaderboardData = () => {
+  const loadLeaderboardData = useCallback(() => {
     const mockData = [
       {
         id: '1',
@@ -102,8 +97,8 @@ export default function Leaderboard({ user }) {
       // Demo user data
       {
         id: 'demo-user',
-        name: user.displayName,
-        email: user.email,
+        name: user?.displayName || 'Current User',
+        email: user?.email || 'user@example.com',
         points: 1250,
         rank: 6,
         badges: ['First Assessment', 'Video Master', 'Hackathon Winner'],
@@ -113,7 +108,7 @@ export default function Leaderboard({ user }) {
           videosCompleted: 12,
           hackathonsJoined: 3
         },
-        avatar: user.displayName?.charAt(0) || 'U',
+        avatar: user?.displayName?.charAt(0) || 'U',
         isCurrentUser: true,
         joinDate: '2024-02-10',
         lastActive: '2024-01-28'
@@ -132,7 +127,12 @@ export default function Leaderboard({ user }) {
     // Find current user's rank
     const currentUser = rankedData.find(u => u.id === 'demo-user');
     setUserRank(currentUser);
-  };
+  }, [user]);
+
+  // Load data on component mount
+  useEffect(() => {
+    loadLeaderboardData();
+  }, [loadLeaderboardData]);
 
   // Utility functions
   const getRankIcon = (rank) => {
@@ -153,11 +153,14 @@ export default function Leaderboard({ user }) {
   const getSortedData = () => {
     switch (activeTab) {
       case 'assessments':
-        return [...leaderboardData].sort((a, b) => b.progress.assessmentsCompleted - a.progress.assessmentsCompleted);
+        return [...leaderboardData].sort((a, b) => 
+          (b?.progress?.assessmentsCompleted || 0) - (a?.progress?.assessmentsCompleted || 0));
       case 'hackathons':
-        return [...leaderboardData].sort((a, b) => b.progress.hackathonsJoined - a.progress.hackathonsJoined);
+        return [...leaderboardData].sort((a, b) => 
+          (b?.progress?.hackathonsJoined || 0) - (a?.progress?.hackathonsJoined || 0));
       case 'videos':
-        return [...leaderboardData].sort((a, b) => b.progress.videosCompleted - a.progress.videosCompleted);
+        return [...leaderboardData].sort((a, b) => 
+          (b?.progress?.videosCompleted || 0) - (a?.progress?.videosCompleted || 0));
       default:
         return leaderboardData;
     }
@@ -173,11 +176,12 @@ export default function Leaderboard({ user }) {
   };
 
   const getColumnValue = (user) => {
+    if (!user) return 0;
     switch (activeTab) {
-      case 'assessments': return user.progress.assessmentsCompleted;
-      case 'hackathons': return user.progress.hackathonsJoined;
-      case 'videos': return user.progress.videosCompleted;
-      default: return user.points;
+      case 'assessments': return user?.progress?.assessmentsCompleted || 0;
+      case 'hackathons': return user?.progress?.hackathonsJoined || 0;
+      case 'videos': return user?.progress?.videosCompleted || 0;
+      default: return user?.points || 0;
     }
   };
 
@@ -204,12 +208,12 @@ export default function Leaderboard({ user }) {
 
   // Points earning guide
   const pointsGuide = [
-    { action: 'Complete Assessment', points: '+100', color: 'green' },
-    { action: 'Watch Learning Videos', points: '+25', color: 'blue' },
-    { action: 'Join Hackathon', points: '+200', color: 'purple' },
-    { action: 'Win Hackathon', points: '+500', color: 'yellow' },
-    { action: 'Daily Streak', points: '+50', color: 'red' },
-    { action: 'Complete Learning Path', points: '+1000', color: 'indigo' }
+    { action: 'Complete Assessment', points: '+100', colorClass: 'bg-green-100' },
+    { action: 'Watch Learning Videos', points: '+25', colorClass: 'bg-blue-100' },
+    { action: 'Join Hackathon', points: '+200', colorClass: 'bg-purple-100' },
+    { action: 'Win Hackathon', points: '+500', colorClass: 'bg-yellow-100' },
+    { action: 'Daily Streak', points: '+50', colorClass: 'bg-red-100' },
+    { action: 'Complete Learning Path', points: '+1000', colorClass: 'bg-indigo-100' }
   ];
 
   return (
@@ -231,16 +235,16 @@ export default function Leaderboard({ user }) {
           <div className="flex items-center justify-between mb-4">
             <div className="flex items-center space-x-4">
               <div className="w-12 h-12 bg-blue-500 rounded-full flex items-center justify-center text-white font-bold">
-                {userRank.avatar}
+                {userRank?.avatar || '?'}
               </div>
               <div>
-                <h4 className="font-semibold text-gray-800">{userRank.name}</h4>
-                <p className="text-sm text-gray-600">{userRank.email}</p>
+                <h4 className="font-semibold text-gray-800">{userRank?.name || 'Current User'}</h4>
+                <p className="text-sm text-gray-600">{userRank?.email || 'user@example.com'}</p>
               </div>
             </div>
             <div className="text-right">
-              <div className="text-2xl font-bold text-blue-600">{userRank.points} pts</div>
-              <div className="text-sm text-gray-600">Rank #{userRank.rank}</div>
+              <div className="text-2xl font-bold text-blue-600">{userRank?.points || 0} pts</div>
+              <div className="text-sm text-gray-600">Rank #{userRank?.rank || 0}</div>
             </div>
           </div>
           
@@ -249,37 +253,37 @@ export default function Leaderboard({ user }) {
             <div>
               <div className="flex justify-between text-sm mb-1">
                 <span className="text-gray-600">Assessments</span>
-                <span className="font-medium">{userRank.progress.assessmentsCompleted}</span>
+                <span className="font-medium">{userRank?.progress?.assessmentsCompleted || 0}</span>
               </div>
               <div className="w-full bg-gray-200 rounded-full h-2">
-                <div className="bg-green-500 h-2 rounded-full" style={{ width: `${(userRank.progress.assessmentsCompleted / 15) * 100}%` }}></div>
+                <div className="bg-green-500 h-2 rounded-full" style={{ width: `${((userRank?.progress?.assessmentsCompleted || 0) / 15) * 100}%` }}></div>
               </div>
             </div>
             <div>
               <div className="flex justify-between text-sm mb-1">
                 <span className="text-gray-600">Skills</span>
-                <span className="font-medium">{userRank.progress.skillsAssessed}</span>
+                <span className="font-medium">{userRank?.progress?.skillsAssessed || 0}</span>
               </div>
               <div className="w-full bg-gray-200 rounded-full h-2">
-                <div className="bg-blue-500 h-2 rounded-full" style={{ width: `${(userRank.progress.skillsAssessed / 15) * 100}%` }}></div>
+                <div className="bg-blue-500 h-2 rounded-full" style={{ width: `${((userRank?.progress?.skillsAssessed || 0) / 15) * 100}%` }}></div>
               </div>
             </div>
             <div>
               <div className="flex justify-between text-sm mb-1">
                 <span className="text-gray-600">Videos</span>
-                <span className="font-medium">{userRank.progress.videosCompleted}</span>
+                <span className="font-medium">{userRank?.progress?.videosCompleted || 0}</span>
               </div>
               <div className="w-full bg-gray-200 rounded-full h-2">
-                <div className="bg-yellow-500 h-2 rounded-full" style={{ width: `${(userRank.progress.videosCompleted / 30) * 100}%` }}></div>
+                <div className="bg-yellow-500 h-2 rounded-full" style={{ width: `${((userRank?.progress?.videosCompleted || 0) / 30) * 100}%` }}></div>
               </div>
             </div>
             <div>
               <div className="flex justify-between text-sm mb-1">
                 <span className="text-gray-600">Hackathons</span>
-                <span className="font-medium">{userRank.progress.hackathonsJoined}</span>
+                <span className="font-medium">{userRank?.progress?.hackathonsJoined || 0}</span>
               </div>
               <div className="w-full bg-gray-200 rounded-full h-2">
-                <div className="bg-purple-500 h-2 rounded-full" style={{ width: `${(userRank.progress.hackathonsJoined / 10) * 100}%` }}></div>
+                <div className="bg-purple-500 h-2 rounded-full" style={{ width: `${((userRank?.progress?.hackathonsJoined || 0) / 10) * 100}%` }}></div>
               </div>
             </div>
           </div>
@@ -337,16 +341,16 @@ export default function Leaderboard({ user }) {
 
               {/* Table Body */}
               <tbody className="bg-white divide-y divide-gray-200">
-                {getSortedData().map((user, index) => (
+                {getSortedData().map((user) => (
                   <tr
-                    key={user.id}
-                    className={`${user.isCurrentUser ? 'bg-blue-50' : 'hover:bg-gray-50'}`}
+                    key={user?.id || Math.random().toString()}
+                    className={`${user?.isCurrentUser ? 'bg-blue-50' : ''} hover:bg-gray-50`}
                   >
                     {/* Rank Column */}
                     <td className="px-6 py-4 whitespace-nowrap">
                       <div className="flex items-center">
                         <span className="text-lg font-bold text-gray-900">
-                          {getRankIcon(user.rank)}
+                          {getRankIcon(user?.rank || 0)}
                         </span>
                       </div>
                     </td>
@@ -355,26 +359,26 @@ export default function Leaderboard({ user }) {
                     <td className="px-6 py-4 whitespace-nowrap">
                       <div className="flex items-center">
                         <div className="w-10 h-10 bg-gray-300 rounded-full flex items-center justify-center text-white font-bold">
-                          {user.avatar}
+                          {user?.avatar || '?'}
                         </div>
                         <div className="ml-4">
                           <div className="text-sm font-medium text-gray-900 flex items-center">
-                            {user.name}
-                            {user.isCurrentUser && (
+                            {user?.name || 'Unknown User'}
+                            {user?.isCurrentUser && (
                               <span className="ml-2 px-2 py-1 bg-blue-100 text-blue-800 text-xs rounded-full">
                                 You
                               </span>
                             )}
                           </div>
-                          <div className="text-sm text-gray-500">{user.email}</div>
+                          <div className="text-sm text-gray-500">{user?.email || 'No email'}</div>
                         </div>
                       </div>
                     </td>
 
                     {/* Score Column */}
                     <td className="px-6 py-4 whitespace-nowrap">
-                      <div className={`text-lg font-bold ${getColumnColor(getColumnValue(user))}`}>
-                        {getColumnValue(user)}
+                      <div className={`text-lg font-bold ${getColumnColor(getColumnValue(user || {}))}`}>
+                        {getColumnValue(user || {})}
                         {activeTab === 'overall' && ' pts'}
                       </div>
                     </td>
@@ -384,19 +388,19 @@ export default function Leaderboard({ user }) {
                       <div className="grid grid-cols-2 gap-2 text-xs">
                         <div>
                           <span className="text-gray-500">Assessments:</span>
-                          <span className="ml-1 font-medium">{user.progress.assessmentsCompleted}</span>
+                          <span className="ml-1 font-medium">{user?.progress?.assessmentsCompleted || 0}</span>
                         </div>
                         <div>
                           <span className="text-gray-500">Videos:</span>
-                          <span className="ml-1 font-medium">{user.progress.videosCompleted}</span>
+                          <span className="ml-1 font-medium">{user?.progress?.videosCompleted || 0}</span>
                         </div>
                         <div>
                           <span className="text-gray-500">Skills:</span>
-                          <span className="ml-1 font-medium">{user.progress.skillsAssessed}</span>
+                          <span className="ml-1 font-medium">{user?.progress?.skillsAssessed || 0}</span>
                         </div>
                         <div>
                           <span className="text-gray-500">Hackathons:</span>
-                          <span className="ml-1 font-medium">{user.progress.hackathonsJoined}</span>
+                          <span className="ml-1 font-medium">{user?.progress?.hackathonsJoined || 0}</span>
                         </div>
                       </div>
                     </td>
@@ -404,7 +408,7 @@ export default function Leaderboard({ user }) {
                     {/* Badges Column */}
                     <td className="px-6 py-4 whitespace-nowrap">
                       <div className="flex flex-wrap gap-1">
-                        {user.badges.slice(0, 2).map((badge, badgeIndex) => (
+                        {user.badges?.slice(0, 2).map((badge, badgeIndex) => (
                           <span
                             key={badgeIndex}
                             className="px-2 py-1 bg-yellow-100 text-yellow-800 text-xs rounded-full"
@@ -412,9 +416,9 @@ export default function Leaderboard({ user }) {
                             {badge}
                           </span>
                         ))}
-                        {user.badges.length > 2 && (
+                        {user.badges?.length > 2 && (
                           <span className="px-2 py-1 bg-gray-100 text-gray-600 text-xs rounded-full">
-                            +{user.badges.length - 2}
+                            +{user.badges?.length - 2}
                           </span>
                         )}
                       </div>
@@ -422,7 +426,7 @@ export default function Leaderboard({ user }) {
 
                     {/* Last Active Column */}
                     <td className="px-6 py-4 whitespace-nowrap text-sm text-gray-500">
-                      {user.lastActive}
+                      {user.lastActive || 'N/A'}
                     </td>
                   </tr>
                 ))}
@@ -439,8 +443,8 @@ export default function Leaderboard({ user }) {
           <div className="space-y-3">
             {pointsGuide.slice(0, 3).map((item, index) => (
               <div key={index} className="flex items-center space-x-3">
-                <div className={`w-8 h-8 bg-${item.color}-100 rounded-full flex items-center justify-center`}>
-                  <span className={`text-${item.color}-600 font-bold`}>+</span>
+                <div className={`w-8 h-8 ${item.colorClass} rounded-full flex items-center justify-center`}>
+                  <span className="font-bold">+</span>
                 </div>
                 <div>
                   <p className="font-medium text-gray-800">{item.action}</p>
@@ -452,8 +456,8 @@ export default function Leaderboard({ user }) {
           <div className="space-y-3">
             {pointsGuide.slice(3).map((item, index) => (
               <div key={index} className="flex items-center space-x-3">
-                <div className={`w-8 h-8 bg-${item.color}-100 rounded-full flex items-center justify-center`}>
-                  <span className={`text-${item.color}-600 font-bold`}>+</span>
+                <div className={`w-8 h-8 ${item.colorClass} rounded-full flex items-center justify-center`}>
+                  <span className="font-bold">+</span>
                 </div>
                 <div>
                   <p className="font-medium text-gray-800">{item.action}</p>

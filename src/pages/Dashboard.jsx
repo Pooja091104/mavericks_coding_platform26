@@ -8,7 +8,7 @@ import HackathonPanel from "../analytics/components/HackathonPanel";
 
 import "../styles.css";
 
-export default function Dashboard() {
+export default function Dashboard({ user }) {
   const [showHackathonPanel, setShowHackathonPanel] = useState(false);
 
   const toggleHackathonPanel = () => {
@@ -51,7 +51,7 @@ export default function Dashboard() {
       )}
 
       <div className="chatbox-wrapper">
-        <ChatBox />
+        <ChatBox user={user} trackUserInteraction={true} />
       </div>
     </div>
   );

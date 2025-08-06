@@ -1,12 +1,9 @@
 import React from 'react';
 import { 
   Home, 
-  BookOpen, 
   Target, 
   Trophy, 
   Users, 
-  BarChart3, 
-  Video, 
   FileText,
   Settings,
   HelpCircle
@@ -15,13 +12,10 @@ import {
 export default function Sidebar({ activeTab, setActiveTab }) {
   const navItems = [
     { id: 'overview', label: 'Overview', icon: Home },
-    { id: 'learning', label: 'Learning Path', icon: BookOpen },
+    { id: 'resume', label: 'Resume Builder', icon: FileText },
     { id: 'assessment', label: 'Skill Assessment', icon: Target },
     { id: 'hackathons', label: 'Hackathons', icon: Trophy },
     { id: 'leaderboard', label: 'Leaderboard', icon: Users },
-    { id: 'analytics', label: 'Analytics', icon: BarChart3 },
-    { id: 'videos', label: 'Video Learning', icon: Video },
-    { id: 'resume', label: 'Resume Builder', icon: FileText },
   ];
 
   return (
@@ -70,4 +64,4 @@ export default function Sidebar({ activeTab, setActiveTab }) {
       </div>
     </aside>
   );
-} 
+}

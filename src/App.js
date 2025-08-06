@@ -5,6 +5,7 @@ import UserDashboard from "./user/components/UserDashboard";
 import AdminDashboard from "./pages/AdminDashboard";
 import LoadingSpinner from "./components/LoadingSpinner";
 import "./styles.css";
+import "./analytics/components/chat-styles.css";
 
 export default function App() {
   const [user, setUser] = useState(null);
