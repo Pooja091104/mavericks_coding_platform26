@@ -23,36 +23,96 @@ export const db = getFirestore(app);
 export const storage = getStorage(app);
 export const googleProvider = new GoogleAuthProvider();
 
-// Mock authentication functions for demo
+// Authentication functions
 export const signInWithGoogle = async () => {
-  // Mock Google sign-in for demo
-  const mockUser = {
-    uid: 'demo-user-id',
-    email: 'demo@example.com',
-    displayName: 'Demo User',
-    photoURL: null
-  };
-  return { user: mockUser };
+  try {
+    // Mock Google sign-in for demo
+    const mockUser = {
+      uid: 'demo-user-id',
+      email: 'demo@example.com',
+      displayName: 'Demo User',
+      photoURL: null
+    };
+    
+    // Track user login in database
+    await fetch('http://localhost:8002/api/users/login', {
+      method: 'POST',
+      headers: {
+        'Content-Type': 'application/json',
+      },
+      body: JSON.stringify({
+        uid: mockUser.uid,
+        email: mockUser.email,
+        displayName: mockUser.displayName,
+        role: 'user'
+      }),
+    });
+    
+    return { user: mockUser };
+  } catch (error) {
+    console.error('Error during Google sign-in:', error);
+    throw error;
+  }
 };
 
 export const signUpWithEmail = async (email, password) => {
-  // Mock email sign-up for demo
-  const mockUser = {
-    uid: 'demo-user-id',
-    email: email,
-    displayName: email.split('@')[0]
-  };
-  return { user: mockUser };
+  try {
+    // Mock email sign-up for demo
+    const mockUser = {
+      uid: 'demo-user-id',
+      email: email,
+      displayName: email.split('@')[0]
+    };
+    
+    // Track user creation in database
+    await fetch('http://localhost:8002/api/users/login', {
+      method: 'POST',
+      headers: {
+        'Content-Type': 'application/json',
+      },
+      body: JSON.stringify({
+        uid: mockUser.uid,
+        email: mockUser.email,
+        displayName: mockUser.displayName,
+        role: email.includes('admin') ? 'admin' : 'user'
+      }),
+    });
+    
+    return { user: mockUser };
+  } catch (error) {
+    console.error('Error during email sign-up:', error);
+    throw error;
+  }
 };
 
 export const signInWithEmail = async (email, password) => {
-  // Mock email sign-in for demo
-  const mockUser = {
-    uid: 'demo-user-id',
-    email: email,
-    displayName: email.split('@')[0]
-  };
-  return { user: mockUser };
+  try {
+    // Mock email sign-in for demo
+    const mockUser = {
+      uid: 'demo-user-id',
+      email: email,
+      displayName: email.split('@')[0]
+    };
+    
+    // Track user login in database
+    await fetch('http://localhost:8002/api/users/login', {
+      method: 'POST',
+      headers: {
+        'Content-Type': 'application/json',
+      },
+      body: JSON.stringify({
+        uid: mockUser.uid,
+        email: mockUser.email,
+        displayName: mockUser.displayName,
+        role: email.includes('admin') ? 'admin' : 'user'
+      }),
+    });
+    
+    return { user: mockUser };
+  } catch (error) {
+    console.error('Error during email sign-in:', error);
+    throw error;
+  }
 };
 
 export const logout = async () => {

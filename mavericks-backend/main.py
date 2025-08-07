@@ -1,4 +1,4 @@
-from fastapi import FastAPI, File, UploadFile, HTTPException
+from fastapi import FastAPI, File, UploadFile, HTTPException, Depends, Body
 from fastapi.middleware.cors import CORSMiddleware
 from fastapi.staticfiles import StaticFiles
 import os
@@ -7,30 +7,53 @@ import PyPDF2
 import io
 import json
 import re
-import cohere
 import uuid
 import time
 import shutil
 from typing import List, Dict, Optional
 from pydantic import BaseModel
-from assessment_cache import (
-    get_cached_assessment, 
-    cache_assessment, 
-    get_predefined_assessment,
-    get_video_recommendations
-)
+
+# Try to import assessment_cache, but don't fail if it's not available
+try:
+    from assessment_cache import (
+        get_cached_assessment, 
+        cache_assessment, 
+        get_predefined_assessment,
+        get_video_recommendations
+    )
+    assessment_cache_available = True
+except ImportError:
+    print("⚠️ assessment_cache module not available - some features will be limited")
+    assessment_cache_available = False
+
+# Try to import database models and utilities, but don't fail if they're not available
+try:
+    import cohere
+    from database_models import engine, User, Assessment, ChatInteraction, Hackathon, HackathonParticipant, DashboardMetrics
+    from sqlalchemy.orm import sessionmaker
+    # Create session factory
+    Session = sessionmaker(bind=engine)
+    from database_utils import get_user, get_user_by_email, create_user, update_user_login, save_assessment, get_user_assessments, save_chat_interaction, get_chat_interactions, create_hackathon, get_hackathons, join_hackathon, update_dashboard_metrics, get_dashboard_metrics, get_all_users_with_login_data
+    database_available = True
+except ImportError:
+    print("⚠️ Database modules not available - running in limited mode")
+    database_available = False
 
 # Load .env
 load_dotenv()
 
-# Configure Cohere AI
+# Configure Cohere AI if available
+cohere_client = None
 cohere_key = os.getenv("COHERE_API_KEY")
-if cohere_key:
-    cohere_client = cohere.Client(cohere_key)
-    print("✅ Cohere AI configured successfully")
+if database_available and cohere_key:
+    try:
+        cohere_client = cohere.Client(cohere_key)
+        print("✅ Cohere AI configured successfully")
+    except Exception as e:
+        print(f"⚠️ Error configuring Cohere AI: {e}")
+        print("Assessment features will be limited")
 else:
-    print("⚠️ No Cohere API key found - assessment features will be limited")
-    cohere_client = None
+    print("⚠️ Cohere AI not available - assessment features will be limited")
 
 # Init FastAPI
 app = FastAPI(title="Resume Skill Extractor & Assessment System", version="2.0.0")
@@ -43,10 +66,46 @@ app.add_middleware(
     allow_headers=["*"],
 )
 
+# Initialize database if available
+if database_available:
+    try:
+        from database_models import init_db
+        init_db()
+        print("✅ Database initialized successfully")
+    except Exception as e:
+        print(f"⚠️ Database initialization failed: {e}")
+        print("Running without database functionality")
+        database_available = False
+else:
+    print("⚠️ Running without database functionality")
+    # Create in-memory storage for assessments
+    assessments_db = {}
+
 # Pydantic models for request/response
 class AssessmentRequest(BaseModel):
     skills: List[str]
     difficulty: str = "intermediate"  # beginner, intermediate, advanced
+    
+class UserLoginRequest(BaseModel):
+    uid: str
+    email: str
+    displayName: Optional[str] = None
+    role: str = "user"
+    
+class UserResponse(BaseModel):
+    id: str
+    email: str
+    display_name: Optional[str] = None
+    role: str
+    login_count: int
+    last_login: str
+    
+class DashboardMetricsResponse(BaseModel):
+    total_users: int
+    active_users: int
+    assessments_completed: int
+    average_score: float
+    last_updated: str
 
 class AssessmentSubmission(BaseModel):
     assessment_id: str
@@ -191,7 +250,8 @@ def generate_assessment_with_cohere(skills: List[str], difficulty: str = "interm
     
     # 3. Fallback to AI generation (slower but more flexible)
     if not cohere_client:
-        raise Exception("Cohere AI is required for assessment generation. Please configure a valid API key.")
+        print("⚠️ Cohere AI not available, using fallback assessment generation")
+        return create_structured_assessment(skills, difficulty, f"Assessment for {', '.join(skills)}")
     
     try:
         print(f"🤖 Generating AI assessment for {len(skills)} skills...")
@@ -343,7 +403,12 @@ def create_structured_assessment(skills: List[str], difficulty: str, response_te
 def analyze_assessment_results(assessment_id: str, answers: Dict[str, str], skills: List[str]) -> Dict:
     """Analyze assessment results and identify weak skills using Cohere"""
     if not cohere_client:
-        raise Exception("Cohere AI is required for assessment analysis. Please configure a valid API key.")
+        print("⚠️ Cohere AI not available, using fallback assessment analysis")
+        # Calculate score for fallback analysis
+        total_questions = len(answers)
+        correct_answers = sum(1 for answer in answers.values() if answer == "correct")
+        score = (correct_answers / total_questions) * 100 if total_questions > 0 else 0
+        return create_structured_analysis(assessment_id, score, skills)
     
     try:
         # Calculate basic score
@@ -601,21 +666,37 @@ async def submit_assessment(submission: AssessmentSubmission):
             else:
                 checked_answers[question_id] = "incorrect"
         
-        # Analyze results
-        analysis = analyze_assessment_results(
-            submission.assessment_id,
-            checked_answers,
-            assessment["skills_tested"]
-        )
-        
-        if "error" in analysis:
-            raise HTTPException(status_code=500, detail=analysis["error"])
-        
-        return {
-            "success": True,
-            "analysis": analysis,
-            "message": "Assessment submitted and analyzed successfully"
-        }
+        try:
+            # Analyze results
+            analysis = analyze_assessment_results(
+                submission.assessment_id,
+                checked_answers,
+                assessment["skills_tested"]
+            )
+            
+            if "error" in analysis:
+                raise HTTPException(status_code=500, detail=analysis["error"])
+            
+            return {
+                "success": True,
+                "analysis": analysis,
+                "message": "Assessment submitted and analyzed successfully"
+            }
+        except Exception as analysis_error:
+            print(f"Error analyzing assessment: {analysis_error}")
+            # Calculate basic score for fallback
+            total_questions = len(checked_answers)
+            correct_answers = sum(1 for answer in checked_answers.values() if answer == "correct")
+            score = (correct_answers / total_questions) * 100 if total_questions > 0 else 0
+            
+            # Use structured analysis as fallback
+            analysis = create_structured_analysis(submission.assessment_id, score, assessment["skills_tested"])
+            
+            return {
+                "success": True,
+                "analysis": analysis,
+                "message": "Assessment analyzed with fallback system"
+            }
         
     except Exception as e:
         print(f"Error submitting assessment: {e}")
@@ -666,6 +747,121 @@ def health_check():
         "status": "healthy", 
         "service": "resume-skill-extractor-assessment",
         "cohere_configured": cohere_client is not None
+    }
+
+# User management endpoints
+@app.post("/api/users/login", response_model=UserResponse)
+async def user_login(user_data: UserLoginRequest):
+    """Record user login and return user data"""
+    try:
+        # Check if database is available
+        if not database_available:
+            # Return mock data if database is not available
+            return {
+                "id": user_data.uid,
+                "email": user_data.email,
+                "display_name": user_data.displayName,
+                "role": user_data.role,
+                "login_count": 1,
+                "last_login": time.strftime("%Y-%m-%dT%H:%M:%S", time.gmtime())
+            }
+            
+        # Check if user exists
+        user = get_user_by_email(user_data.email)
+        
+        if user:
+            # Update existing user login
+            update_user_login(user.id)
+        else:
+            # Create new user
+            user = create_user(user_data.dict())
+        
+        # Update dashboard metrics
+        update_dashboard_metrics()
+        
+        # Return user data
+        return {
+            "id": user.id,
+            "email": user.email,
+            "display_name": user.display_name,
+            "role": user.role,
+            "login_count": user.login_count,
+            "last_login": user.last_login.isoformat()
+        }
+    except Exception as e:
+        print(f"Error in user login: {e}")
+        # Return mock data in case of error
+        return {
+            "id": user_data.uid,
+            "email": user_data.email,
+            "display_name": user_data.displayName,
+            "role": user_data.role,
+            "login_count": 1,
+            "last_login": time.strftime("%Y-%m-%dT%H:%M:%S", time.gmtime())
+        }
+
+# Define UserLoginData response model
+class UserLoginData(BaseModel):
+    id: str
+    email: str
+    display_name: Optional[str] = None
+    role: str
+    login_count: int
+    last_login: str
+    created_at: str
+
+@app.get("/api/users/logins", response_model=List[UserLoginData])
+async def get_user_logins():
+    """Get all users with their login data for admin dashboard"""
+    users = get_all_users_with_login_data()
+    
+    if not users:
+        return []
+    
+    return [
+        {
+            "id": user.id,
+            "email": user.email,
+            "display_name": user.display_name,
+            "role": user.role,
+            "login_count": user.login_count,
+            "last_login": user.last_login.isoformat(),
+            "created_at": user.created_at.isoformat()
+        } for user in users
+    ]
+
+@app.get("/api/users/{user_id}", response_model=UserResponse)
+async def get_user_data(user_id: str):
+    """Get user data by ID"""
+    user = get_user(user_id)
+    
+    if not user:
+        raise HTTPException(status_code=404, detail="User not found")
+    
+    return {
+        "id": user.id,
+        "email": user.email,
+        "display_name": user.display_name,
+        "role": user.role,
+        "login_count": user.login_count,
+        "last_login": user.last_login.isoformat()
+    }
+
+@app.get("/api/dashboard/metrics", response_model=DashboardMetricsResponse)
+async def get_metrics():
+    """Get dashboard metrics"""
+    # Update metrics before returning
+    metrics = update_dashboard_metrics()
+    
+    if not metrics:
+        raise HTTPException(status_code=500, detail="Failed to retrieve dashboard metrics")
+    
+    return {
+        "total_users": metrics.total_users,
+        "active_users": metrics.active_users,
+        "assessments_completed": metrics.assessments_completed,
+        "average_score": metrics.average_score,
+        "last_updated": metrics.last_updated.isoformat()
     }
 
 if __name__ == "__main__":

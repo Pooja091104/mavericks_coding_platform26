@@ -93,6 +93,11 @@ body {
   -moz-osx-font-smoothing: grayscale;
 }
 
+/* Background pattern */
+.bg-pattern {
+  background-image: url("data:image/svg+xml,%3Csvg width='60' height='60' viewBox='0 0 60 60' xmlns='http://www.w3.org/2000/svg'%3E%3Cg fill='none' fill-rule='evenodd'%3E%3Cg fill='%234b72b0' fill-opacity='0.05'%3E%3Cpath d='M36 34v-4h-2v4h-4v2h4v4h2v-4h4v-2h-4zm0-30V0h-2v4h-4v2h4v4h2V6h4V4h-4zM6 34v-4H4v4H0v2h4v4h2v-4h4v-2H6zM6 4V0H4v4H0v2h4v4h2V6h4V4H6z'/%3E%3C/g%3E%3C/g%3E%3C/svg%3E");
+}
+
 /* ===== LAYOUT COMPONENTS ===== */
 
 /* Main Container */
@@ -156,6 +161,92 @@ body {
   right: 0;
   height: 4px;
   background: linear-gradient(90deg, var(--primary-500), var(--primary-600));
+}
+
+/* Form Inputs */
+.form-group {
+  margin-bottom: 1.25rem;
+}
+
+.form-label {
+  display: block;
+  margin-bottom: 0.5rem;
+  font-weight: 500;
+  color: var(--gray-700);
+  font-size: 0.875rem;
+}
+
+.form-input {
+  width: 100%;
+  padding: 0.75rem 1rem;
+  font-size: 0.875rem;
+  line-height: 1.5;
+  color: var(--gray-900);
+  background-color: white;
+  background-clip: padding-box;
+  border: 1px solid var(--gray-300);
+  border-radius: var(--radius-md);
+  transition: border-color 0.15s ease-in-out, box-shadow 0.15s ease-in-out;
+}
+
+.form-input:focus {
+  border-color: var(--primary-400);
+  outline: 0;
+  box-shadow: 0 0 0 3px rgba(59, 130, 246, 0.1);
+}
+
+.form-input::placeholder {
+  color: var(--gray-400);
+  opacity: 1;
+}
+
+/* Buttons */
+.btn {
+  display: inline-flex;
+  align-items: center;
+  justify-content: center;
+  padding: 0.5rem 1rem;
+  font-weight: 500;
+  font-size: 0.875rem;
+  line-height: 1.5;
+  border-radius: var(--radius-md);
+  border: 1px solid transparent;
+  cursor: pointer;
+  transition: all 0.2s ease-in-out;
+}
+
+.btn:disabled {
+  opacity: 0.65;
+  pointer-events: none;
+}
+
+.btn-primary {
+  color: white;
+  background: linear-gradient(to right, var(--primary-600), var(--primary-700));
+  border-color: var(--primary-700);
+}
+
+.btn-primary:hover {
+  background: linear-gradient(to right, var(--primary-700), var(--primary-800));
+  transform: translateY(-1px);
+  box-shadow: 0 4px 6px -1px rgba(0, 0, 0, 0.1), 0 2px 4px -1px rgba(0, 0, 0, 0.06);
+}
+
+.btn-secondary {
+  color: var(--primary-700);
+  background-color: var(--primary-50);
+  border-color: var(--primary-100);
+}
+
+.btn-secondary:hover {
+  background-color: var(--primary-100);
+  color: var(--primary-800);
+}
+
+.btn-lg {
+  padding: 0.75rem 1.5rem;
+  font-size: 1rem;
+  border-radius: var(--radius-lg);
 }
 
 .card-header {

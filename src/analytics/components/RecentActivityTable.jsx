@@ -292,47 +292,61 @@ export default function RecentActivityTable() {
         </div>
       </div>
 
-      {/* Enhanced Table */}
-      <table className="recent-activity-table">
+      {/* Enhanced Table with more tabular structure */}
+      <div className="table-container">
+        <table className="recent-activity-table table">
         <thead>
           <tr>
-            <th></th>
+            <th style={{ width: '40px' }}></th>
             <th>User</th>
             <th>Skills</th>
-            <th>Assessment Score</th>
-            <th>Status</th>
+            <th style={{ width: '120px' }}>Assessment Score</th>
+            <th style={{ width: '100px' }}>Status</th>
             <th>Last Activity</th>
-            <th>Date</th>
-            <th>Actions</th>
+            <th style={{ width: '100px' }}>Date</th>
+            <th style={{ width: '120px' }}>Actions</th>
           </tr>
         </thead>
         <tbody>
           {filteredActivities.map((a) => (
             <React.Fragment key={a.id}>
               <tr className="recent-activity-row">
-                <td>
+                <td style={{ textAlign: 'center' }}>
                   <button
                     onClick={() => toggleRowExpansion(a.id)}
                     className="expand-row-btn"
+                    style={{ cursor: 'pointer', border: 'none', background: 'none', fontSize: '16px' }}
                   >
                     {expandedRows.has(a.id) ? "−" : "+"}
                   </button>
                 </td>
                 <td>
                   <div className="user-info-cell">
-                    <div className="user-name-cell">{a.user}</div>
-                    <div className="user-email-cell">{a.email}</div>
+                    <div className="user-name-cell" style={{ fontWeight: '600' }}>{a.user}</div>
+                    <div className="user-email-cell" style={{ fontSize: '0.8rem', color: 'var(--gray-500)' }}>{a.email}</div>
                   </div>
                 </td>
                 <td>
-                  <div className="skills-list-cell">
+                  <div className="skills-list-cell" style={{ display: 'flex', flexWrap: 'wrap', gap: '4px' }}>
                     {a.skills.slice(0, 2).map((skill, index) => (
-                      <span key={index} className="skill-tag-cell">
+                      <span key={index} className="skill-tag-cell" style={{ 
+                        background: 'var(--primary-100)', 
+                        color: 'var(--primary-700)', 
+                        padding: '2px 6px', 
+                        borderRadius: '4px', 
+                        fontSize: '0.75rem' 
+                      }}>
                         {skill}
                       </span>
                     ))}
                     {a.skills.length > 2 && (
-                      <span className="skill-more-cell">
+                      <span className="skill-more-cell" style={{ 
+                        background: 'var(--gray-100)', 
+                        color: 'var(--gray-700)', 
+                        padding: '2px 6px', 
+                        borderRadius: '4px', 
+                        fontSize: '0.75rem' 
+                      }}>
                         +{a.skills.length - 2}
                       </span>
                     )}
@@ -340,10 +354,16 @@ export default function RecentActivityTable() {
                 </td>
                 <td>
                   <div className="score-display-cell">
-                    <span className="score-value-cell">
+                    <span className="score-value-cell" style={{ fontWeight: '600' }}>
                       {a.assessmentScore}%
                     </span>
-                    <div className="score-bar-container-cell">
+                    <div className="score-bar-container-cell" style={{ 
+                      height: '4px', 
+                      background: 'var(--gray-200)', 
+                      borderRadius: '2px', 
+                      marginTop: '4px', 
+                      overflow: 'hidden' 
+                    }}>
                       <div
                         className={`score-bar-fill-cell score-${
                           a.assessmentScore >= 80
@@ -352,7 +372,12 @@ export default function RecentActivityTable() {
                             ? "medium"
                             : "low"
                         }`}
-                        style={{ width: `${a.assessmentScore}%` }}
+                        style={{ 
+                          width: `${a.assessmentScore}%`,
+                          height: '100%',
+                          background: a.assessmentScore >= 80 ? 'var(--success-500)' : 
+                                     a.assessmentScore >= 60 ? 'var(--warning-500)' : 'var(--error-500)'
+                        }}
                       />
                     </div>
                   </div>
@@ -361,11 +386,12 @@ export default function RecentActivityTable() {
                 <td>{a.action}</td>
                 <td>{a.date}</td>
                 <td>
-                  <div className="action-buttons-cell">
+                  <div className="action-buttons-cell" style={{ display: 'flex', gap: '8px', justifyContent: 'center' }}>
                     <button
                       onClick={() => handleManualAction(a.id, "reassess")}
                       className="action-btn-cell reassess-btn-cell"
                       title="Re-assess"
+                      style={{ border: 'none', background: 'var(--gray-100)', borderRadius: '4px', padding: '4px', cursor: 'pointer' }}
                     >
                       🔄
                     </button>
@@ -373,6 +399,7 @@ export default function RecentActivityTable() {
                       onClick={() => handleManualAction(a.id, "updateProfile")}
                       className="action-btn-cell update-profile-btn-cell"
                       title="Update Profile"
+                      style={{ border: 'none', background: 'var(--gray-100)', borderRadius: '4px', padding: '4px', cursor: 'pointer' }}
                     >
                       ✏️
                     </button>
@@ -380,6 +407,7 @@ export default function RecentActivityTable() {
                       onClick={() => handleManualAction(a.id, "generateReport")}
                       className="action-btn-cell generate-report-btn-cell"
                       title="Generate Report"
+                      style={{ border: 'none', background: 'var(--gray-100)', borderRadius: '4px', padding: '4px', cursor: 'pointer' }}
                     >
                       📊
                     </button>
@@ -391,27 +419,44 @@ export default function RecentActivityTable() {
               {expandedRows.has(a.id) && (
                 <tr className="expanded-row-content">
                   <td colSpan="8">
-                    <div className="expanded-details-container">
-                      <h4 className="expanded-details-title">
+                    <div className="expanded-details-container" style={{ padding: 'var(--spacing-md)', backgroundColor: 'var(--gray-50)', borderRadius: 'var(--radius-md)' }}>
+                      <h4 className="expanded-details-title" style={{ margin: 'var(--spacing-sm) 0', color: 'var(--gray-700)', fontSize: '0.9rem', fontWeight: '600' }}>
                         Workflow Progress
                       </h4>
                       <ProgressBar progress={a.progress} />
 
-                      <div className="all-skills-section">
-                        <h4 className="expanded-details-title">All Skills</h4>
-                        <div className="all-skills-list">
+                      <div className="all-skills-section" style={{ marginTop: 'var(--spacing-md)' }}>
+                        <h4 className="expanded-details-title" style={{ margin: 'var(--spacing-sm) 0', color: 'var(--gray-700)', fontSize: '0.9rem', fontWeight: '600' }}>
+                          All Skills
+                        </h4>
+                        <div className="all-skills-list" style={{ display: 'flex', flexWrap: 'wrap', gap: 'var(--spacing-xs)' }}>
                           {a.skills.map((skill, index) => (
-                            <span key={index} className="skill-tag-full">
+                            <span key={index} className="skill-tag-full" style={{ 
+                              background: 'var(--primary-100)', 
+                              color: 'var(--primary-700)', 
+                              padding: '2px 8px', 
+                              borderRadius: '4px', 
+                              fontSize: '0.75rem' 
+                            }}>
                               {skill}
                             </span>
                           ))}
                         </div>
                       </div>
 
-                      <div className="manual-actions-expanded">
+                      <div className="manual-actions-expanded" style={{ display: 'flex', gap: 'var(--spacing-md)', marginTop: 'var(--spacing-md)' }}>
                         <button
                           onClick={() => handleManualAction(a.id, "reassess")}
                           className="manual-action-btn-expanded reassess-expanded"
+                          style={{ 
+                            padding: 'var(--spacing-xs) var(--spacing-sm)', 
+                            backgroundColor: 'var(--primary-500)', 
+                            color: 'white', 
+                            border: 'none', 
+                            borderRadius: 'var(--radius-sm)', 
+                            cursor: 'pointer', 
+                            fontSize: '0.8rem' 
+                          }}
                         >
                           Re-assess User
                         </button>
@@ -420,6 +465,15 @@ export default function RecentActivityTable() {
                             handleManualAction(a.id, "updateProfile")
                           }
                           className="manual-action-btn-expanded update-profile-expanded"
+                          style={{ 
+                            padding: 'var(--spacing-xs) var(--spacing-sm)', 
+                            backgroundColor: 'var(--gray-500)', 
+                            color: 'white', 
+                            border: 'none', 
+                            borderRadius: 'var(--radius-sm)', 
+                            cursor: 'pointer', 
+                            fontSize: '0.8rem' 
+                          }}
                         >
                           Update Profile
                         </button>
@@ -428,6 +482,15 @@ export default function RecentActivityTable() {
                             handleManualAction(a.id, "generateReport")
                           }
                           className="manual-action-btn-expanded generate-report-expanded"
+                          style={{ 
+                            padding: 'var(--spacing-xs) var(--spacing-sm)', 
+                            backgroundColor: 'var(--success-500)', 
+                            color: 'white', 
+                            border: 'none', 
+                            borderRadius: 'var(--radius-sm)', 
+                            cursor: 'pointer', 
+                            fontSize: '0.8rem' 
+                          }}
                         >
                           Generate Report
                         </button>
@@ -440,12 +503,13 @@ export default function RecentActivityTable() {
           ))}
         </tbody>
       </table>
-
+      
       {filteredActivities.length === 0 && (
-        <div className="no-users-found">
+        <div className="no-users-found" style={{ padding: 'var(--spacing-lg)', textAlign: 'center', color: 'var(--gray-500)' }}>
           No users found matching your criteria.
         </div>
       )}
+      </div>
     </div>
   );
 }

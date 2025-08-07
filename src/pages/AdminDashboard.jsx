@@ -1,18 +1,63 @@
-import React, { useState } from 'react';
+import React, { useState, useEffect } from 'react';
 import { Users, TrendingUp, Award, Activity, Settings, LogOut } from 'lucide-react';
 import RecentActivityTable from '../analytics/components/RecentActivityTable';
 import ChatBox from '../analytics/components/ChatBox';
 import ChatInteractions from '../analytics/components/ChatInteractions';
-import HackathonPanel from '../analytics/components/HackathonPanel';
+import HackathonManagement from '../analytics/components/HackathonManagement';
+import UserLoginTable from '../analytics/components/UserLoginTable';
 
 export default function AdminDashboard({ user, onLogout }) {
   const [activeTab, setActiveTab] = useState('overview');
-  const stats = {
-    totalUsers: 1247,
-    activeUsers: 892,
-    assessmentsCompleted: 3456,
-    averageScore: 78.5
-  };
+  const [stats, setStats] = useState({
+    totalUsers: 0,
+    activeUsers: 0,
+    assessmentsCompleted: 0,
+    averageScore: 0
+  });
+  const [loading, setLoading] = useState(true);
+  const [error, setError] = useState(null);
+  
+  // Fetch dashboard metrics from API
+  useEffect(() => {
+    const fetchDashboardMetrics = async () => {
+      try {
+        setLoading(true);
+        const response = await fetch('http://localhost:8002/api/dashboard/metrics');
+        
+        if (!response.ok) {
+          throw new Error(`Failed to fetch dashboard metrics: ${response.status}`);
+        }
+        
+        const data = await response.json();
+        setStats({
+          totalUsers: data.total_users,
+          activeUsers: data.active_users,
+          assessmentsCompleted: data.assessments_completed,
+          averageScore: data.average_score
+        });
+        setError(null);
+      } catch (err) {
+        console.error('Error fetching dashboard metrics:', err);
+        setError('Failed to load dashboard metrics. Using default values.');
+        // Use default values if API fails
+        setStats({
+          totalUsers: 1247,
+          activeUsers: 892,
+          assessmentsCompleted: 3456,
+          averageScore: 78.5
+        });
+      } finally {
+        setLoading(false);
+      }
+    };
+    
+    fetchDashboardMetrics();
+    
+    // Refresh metrics every 5 minutes
+    const intervalId = setInterval(fetchDashboardMetrics, 5 * 60 * 1000);
+    
+    return () => clearInterval(intervalId);
+  }, []);
 
   const tabs = [
     { id: 'overview', label: 'Overview', icon: Activity },
@@ -93,6 +138,20 @@ export default function AdminDashboard({ user, onLogout }) {
         {activeTab === 'overview' && (
           <div className="space-y-6">
             {/* Stats Cards */}
+            {error && (
+              <div className="bg-yellow-50 border-l-4 border-yellow-400 p-4 mb-6">
+                <div className="flex">
+                  <div className="flex-shrink-0">
+                    <svg className="h-5 w-5 text-yellow-400" viewBox="0 0 20 20" fill="currentColor">
+                      <path fillRule="evenodd" d="M8.257 3.099c.765-1.36 2.722-1.36 3.486 0l5.58 9.92c.75 1.334-.213 2.98-1.742 2.98H4.42c-1.53 0-2.493-1.646-1.743-2.98l5.58-9.92zM11 13a1 1 0 11-2 0 1 1 0 012 0zm-1-8a1 1 0 00-1 1v3a1 1 0 002 0V6a1 1 0 00-1-1z" clipRule="evenodd" />
+                    </svg>
+                  </div>
+                  <div className="ml-3">
+                    <p className="text-sm text-yellow-700">{error}</p>
+                  </div>
+                </div>
+              </div>
+            )}
             <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-4 gap-6">
               <div className="metrics-card">
                 <div className="flex items-center justify-between mb-4">
@@ -105,7 +164,13 @@ export default function AdminDashboard({ user, onLogout }) {
                   </div>
                 </div>
                 <div className="metrics-title">Total Users</div>
-                <div className="metrics-value">{stats.totalUsers.toLocaleString()}</div>
+                {loading ? (
+                  <div className="metrics-value flex items-center space-x-2">
+                    <div className="h-4 w-16 bg-gray-200 rounded animate-pulse"></div>
+                  </div>
+                ) : (
+                  <div className="metrics-value">{stats.totalUsers.toLocaleString()}</div>
+                )}
               </div>
 
               <div className="metrics-card">
@@ -119,7 +184,13 @@ export default function AdminDashboard({ user, onLogout }) {
                   </div>
                 </div>
                 <div className="metrics-title">Active Users</div>
-                <div className="metrics-value">{stats.activeUsers.toLocaleString()}</div>
+                {loading ? (
+                  <div className="metrics-value flex items-center space-x-2">
+                    <div className="h-4 w-16 bg-gray-200 rounded animate-pulse"></div>
+                  </div>
+                ) : (
+                  <div className="metrics-value">{stats.activeUsers.toLocaleString()}</div>
+                )}
               </div>
 
               <div className="metrics-card">
@@ -133,7 +204,13 @@ export default function AdminDashboard({ user, onLogout }) {
                   </div>
                 </div>
                 <div className="metrics-title">Assessments</div>
-                <div className="metrics-value">{stats.assessmentsCompleted.toLocaleString()}</div>
+                {loading ? (
+                  <div className="metrics-value flex items-center space-x-2">
+                    <div className="h-4 w-16 bg-gray-200 rounded animate-pulse"></div>
+                  </div>
+                ) : (
+                  <div className="metrics-value">{stats.assessmentsCompleted.toLocaleString()}</div>
+                )}
               </div>
 
               <div className="metrics-card">
@@ -147,7 +224,13 @@ export default function AdminDashboard({ user, onLogout }) {
                   </div>
                 </div>
                 <div className="metrics-title">Avg Score</div>
-                <div className="metrics-value">{stats.averageScore}%</div>
+                {loading ? (
+                  <div className="metrics-value flex items-center space-x-2">
+                    <div className="h-4 w-16 bg-gray-200 rounded animate-pulse"></div>
+                  </div>
+                ) : (
+                  <div className="metrics-value">{stats.averageScore}%</div>
+                )}
               </div>
             </div>
 
@@ -226,13 +309,15 @@ export default function AdminDashboard({ user, onLogout }) {
         )}
 
         {activeTab === 'users' && (
-          <div className="card">
-            <div className="card-header">
-              <h2 className="card-title">User Management</h2>
-              <p className="card-subtitle">Manage platform users and their access</p>
-            </div>
-            <div className="text-center py-8">
-              <p className="text-gray-500">User management interface coming soon...</p>
+          <div className="space-y-6">
+            <div className="card">
+              <div className="card-header">
+                <h2 className="card-title">User Management</h2>
+                <p className="card-subtitle">Manage platform users and their access</p>
+              </div>
+              <div className="p-6">
+                <UserLoginTable />
+              </div>
             </div>
           </div>
         )}
@@ -289,11 +374,7 @@ export default function AdminDashboard({ user, onLogout }) {
 
         {activeTab === 'hackathons' && (
           <div className="card">
-            <div className="card-header">
-              <h2 className="card-title">Hackathon Management</h2>
-              <p className="card-subtitle">Create and manage coding competitions</p>
-            </div>
-            <HackathonPanel />
+            <HackathonManagement />
           </div>
         )}
 

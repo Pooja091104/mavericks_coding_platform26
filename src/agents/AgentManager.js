@@ -235,7 +235,7 @@ class AssessmentAgent extends BaseAgent {
 
   async generateAssessment(skill) {
     try {
-      const response = await fetch('http://127.0.0.1:8002/generate_assessment', {
+      const response = await fetch('http://localhost:8002/generate_assessment', {
         method: 'POST',
         headers: {
           'Content-Type': 'application/json',
@@ -631,4 +631,4 @@ class LeaderboardAgent extends BaseAgent {
 
 // Create and export singleton instance
 const agentManager = new AgentManager();
-export default agentManager; 
+export default agentManager;

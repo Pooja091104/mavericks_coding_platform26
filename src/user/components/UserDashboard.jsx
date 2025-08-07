@@ -8,7 +8,8 @@ import SkillAssessmentDashboard from './SkillAssessmentDashboard';
 import HackathonPanel from './HackathonPanel';
 import Leaderboard from './Leaderboard';
 import ProgressStepper from './ProgressStepper';
-import { Target, Trophy, BookOpen, Video } from 'lucide-react';
+import { Target, Trophy, BookOpen, Video, MessageCircle } from 'lucide-react';
+import ChatBot from './ChatBot';
 
 export default function UserDashboard({ user, onLogout }) {
   const [activeTab, setActiveTab] = useState('overview');
@@ -182,6 +183,19 @@ export default function UserDashboard({ user, onLogout }) {
               <p className="card-subtitle">Create and manage your professional resume</p>
             </div>
             <ResumeUploader user={user} />
+          </div>
+        );
+
+      case 'chat':
+        return (
+          <div className="card">
+            <div className="card-header">
+              <h2 className="card-title">AI Assistant</h2>
+              <p className="card-subtitle">Chat with our AI assistant for help and guidance</p>
+            </div>
+            <div className="p-4">
+              <ChatBot user={user} />
+            </div>
           </div>
         );
         
